@@ -1,0 +1,265 @@
+# HungryHippaahneties - RBAC Configuration for HIPAA Compliance
+# Based on OWASP Kubernetes Security & Authorization Cheat Sheets
+# Implements: Principle of Least Privilege
+
+# ===========================================
+# SERVICE ACCOUNTS
+# ===========================================
+
+# Frontend Service Account
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: frontend-sa
+  namespace: hungryhippaahneties
+  labels:
+    app: frontend
+    tier: frontend
+automountServiceAccountToken: false  # Security: Don't auto-mount tokens
+---
+# API Service Account
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: api-sa
+  namespace: hungryhippaahneties
+  labels:
+    app: api
+    tier: middleware
+automountServiceAccountToken: false
+---
+# Backend Service Account
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: backend-sa
+  namespace: hungryhippaahneties
+  labels:
+    app: backend
+    tier: middleware
+automountServiceAccountToken: false
+---
+# PostgreSQL Service Account
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: postgresql-sa
+  namespace: hungryhippaahneties
+  labels:
+    app: postgresql
+    tier: backend
+automountServiceAccountToken: false
+---
+# Redis Service Account
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: redis-sa
+  namespace: hungryhippaahneties
+  labels:
+    app: redis
+    tier: backend
+automountServiceAccountToken: false
+---
+# NGINX Proxy Service Account
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: nginx-proxy-sa
+  namespace: hungryhippaahneties
+  labels:
+    app: nginx-proxy
+    tier: frontend
+automountServiceAccountToken: false
+---
+# WAF Service Account
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: waf-sa
+  namespace: hungryhippaahneties
+  labels:
+    app: modsecurity-waf
+    tier: frontend
+automountServiceAccountToken: false
+
+---
+# ===========================================
+# ROLES - Namespace-scoped permissions
+# ===========================================
+
+# Read-only role for application pods (config/secrets access)
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: config-reader
+  namespace: hungryhippaahneties
+rules:
+  - apiGroups: [""]
+    resources: ["configmaps"]
+    verbs: ["get", "list", "watch"]
+    resourceNames: ["app-config", "nginx-config", "redis-config"]
+---
+# Secrets reader role (limited to specific secrets)
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: secrets-reader
+  namespace: hungryhippaahneties
+rules:
+  - apiGroups: [""]
+    resources: ["secrets"]
+    verbs: ["get"]
+    # Explicitly list allowed secrets - OWASP: Least Privilege
+    resourceNames:
+      - "db-credentials"
+      - "redis-credentials"
+      - "api-secrets"
+      - "tls-certificates"
+---
+# Logging/Events role for audit trail
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: event-logger
+  namespace: hungryhippaahneties
+rules:
+  - apiGroups: [""]
+    resources: ["events"]
+    verbs: ["create", "patch"]
+---
+# Pod status reader (for health checks)
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: pod-reader
+  namespace: hungryhippaahneties
+rules:
+  - apiGroups: [""]
+    resources: ["pods"]
+    verbs: ["get", "list"]
+  - apiGroups: [""]
+    resources: ["pods/log"]
+    verbs: ["get"]
+
+---
+# ===========================================
+# ROLE BINDINGS
+# ===========================================
+
+# Frontend can read configs
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: frontend-config-reader
+  namespace: hungryhippaahneties
+subjects:
+  - kind: ServiceAccount
+    name: frontend-sa
+    namespace: hungryhippaahneties
+roleRef:
+  kind: Role
+  name: config-reader
+  apiGroup: rbac.authorization.k8s.io
+---
+# API service can read configs and specific secrets
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: api-config-reader
+  namespace: hungryhippaahneties
+subjects:
+  - kind: ServiceAccount
+    name: api-sa
+    namespace: hungryhippaahneties
+roleRef:
+  kind: Role
+  name: config-reader
+  apiGroup: rbac.authorization.k8s.io
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: api-secrets-reader
+  namespace: hungryhippaahneties
+subjects:
+  - kind: ServiceAccount
+    name: api-sa
+    namespace: hungryhippaahneties
+roleRef:
+  kind: Role
+  name: secrets-reader
+  apiGroup: rbac.authorization.k8s.io
+---
+# Backend service can read configs and secrets
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: backend-config-reader
+  namespace: hungryhippaahneties
+subjects:
+  - kind: ServiceAccount
+    name: backend-sa
+    namespace: hungryhippaahneties
+roleRef:
+  kind: Role
+  name: config-reader
+  apiGroup: rbac.authorization.k8s.io
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: backend-secrets-reader
+  namespace: hungryhippaahneties
+subjects:
+  - kind: ServiceAccount
+    name: backend-sa
+    namespace: hungryhippaahneties
+roleRef:
+  kind: Role
+  name: secrets-reader
+  apiGroup: rbac.authorization.k8s.io
+---
+# NGINX proxy config reader
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: nginx-config-reader
+  namespace: hungryhippaahneties
+subjects:
+  - kind: ServiceAccount
+    name: nginx-proxy-sa
+    namespace: hungryhippaahneties
+roleRef:
+  kind: Role
+  name: config-reader
+  apiGroup: rbac.authorization.k8s.io
+
+---
+# ===========================================
+# CLUSTER ROLES (if needed for cross-namespace)
+# ===========================================
+
+# Minimal cluster role for monitoring integration
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: hungryhippaahneties-metrics-reader
+rules:
+  - apiGroups: ["metrics.k8s.io"]
+    resources: ["pods", "nodes"]
+    verbs: ["get", "list"]
+---
+# ===========================================
+# POD SECURITY POLICY ALTERNATIVE
+# Using Pod Security Standards via namespace labels (see namespace.yaml)
+# These security contexts are enforced at deployment level
+# ===========================================
+
+# Security Context Constraints summary for reference:
+# - runAsNonRoot: true
+# - runAsUser: >= 10000
+# - allowPrivilegeEscalation: false
+# - readOnlyRootFilesystem: true
+# - capabilities.drop: ["ALL"]
+# - seccompProfile.type: RuntimeDefault

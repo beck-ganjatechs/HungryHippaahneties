@@ -1,0 +1,42 @@
+# HungryHippaahneties - Kustomize Base Configuration
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+namespace: hungryhippaahneties
+
+resources:
+  - namespace.yaml
+  - rbac.yaml
+  - secrets.yaml
+  - configmaps.yaml
+  - network-policies.yaml
+  - services.yaml
+  - deployments.yaml
+  - ingress.yaml
+  - audit-logging.yaml
+
+commonLabels:
+  app.kubernetes.io/name: hungryhippaahneties
+  app.kubernetes.io/part-of: hungryhippaahneties
+  compliance: hipaa
+  managed-by: kustomize
+
+configMapGenerator:
+  - name: nginx-config
+    files:
+      - ../../../configs/nginx/nginx.conf
+  - name: postgresql-config
+    files:
+      - ../../../configs/postgres/postgresql.conf
+  - name: postgresql-hba-config
+    files:
+      - ../../../configs/postgres/pg_hba.conf
+  - name: redis-config
+    files:
+      - ../../../configs/redis/redis.conf
+  - name: redis-acl
+    files:
+      - ../../../configs/redis/users.acl
+  - name: modsecurity-config
+    files:
+      - ../../../configs/modsecurity/modsecurity.conf

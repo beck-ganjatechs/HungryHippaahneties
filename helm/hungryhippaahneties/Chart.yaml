@@ -1,0 +1,28 @@
+apiVersion: v2
+name: hungryhippaahneties
+description: HIPAA-compliant Kubernetes stack with hardened security based on OWASP best practices
+type: application
+version: 1.0.0
+appVersion: "1.0.0"
+keywords:
+  - hipaa
+  - healthcare
+  - security
+  - owasp
+  - compliance
+home: https://github.com/example/hungryhippaahneties
+maintainers:
+  - name: Security Team
+    email: security@example.com
+dependencies:
+  - name: postgresql
+    version: "12.x.x"
+    repository: https://charts.bitnami.com/bitnami
+    condition: postgresql.enabled
+  - name: redis
+    version: "17.x.x"
+    repository: https://charts.bitnami.com/bitnami
+    condition: redis.enabled
+annotations:
+  category: Security
+  compliance: HIPAA

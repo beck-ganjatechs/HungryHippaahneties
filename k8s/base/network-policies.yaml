@@ -1,0 +1,394 @@
+# HungryHippaahneties - Network Policies for HIPAA Compliance
+# Based on OWASP Network Segmentation Cheat Sheet
+# Implements: FRONTEND -> MIDDLEWARE -> BACKEND architecture
+
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: default-deny-all
+  namespace: hungryhippaahneties
+spec:
+  # Default deny all ingress and egress traffic
+  podSelector: {}
+  policyTypes:
+    - Ingress
+    - Egress
+---
+# ===========================================
+# REVERSE PROXY / INGRESS POLICIES
+# ===========================================
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-nginx-ingress
+  namespace: hungryhippaahneties
+spec:
+  podSelector:
+    matchLabels:
+      app: nginx-proxy
+      tier: frontend
+  policyTypes:
+    - Ingress
+    - Egress
+  ingress:
+    # Allow external traffic on HTTPS only
+    - ports:
+        - protocol: TCP
+          port: 443
+        - protocol: TCP
+          port: 80  # For redirect to HTTPS
+  egress:
+    # Allow to frontend service
+    - to:
+        - podSelector:
+            matchLabels:
+              app: frontend
+              tier: frontend
+      ports:
+        - protocol: TCP
+          port: 3000
+    # Allow to API service
+    - to:
+        - podSelector:
+            matchLabels:
+              app: api
+              tier: middleware
+      ports:
+        - protocol: TCP
+          port: 8000
+    # Allow to backend service
+    - to:
+        - podSelector:
+            matchLabels:
+              app: backend
+              tier: middleware
+      ports:
+        - protocol: TCP
+          port: 8080
+    # Allow DNS resolution
+    - to:
+        - namespaceSelector: {}
+          podSelector:
+            matchLabels:
+              k8s-app: kube-dns
+      ports:
+        - protocol: UDP
+          port: 53
+---
+# ===========================================
+# FRONTEND POLICIES
+# ===========================================
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-frontend
+  namespace: hungryhippaahneties
+spec:
+  podSelector:
+    matchLabels:
+      app: frontend
+      tier: frontend
+  policyTypes:
+    - Ingress
+    - Egress
+  ingress:
+    # Only allow from nginx proxy
+    - from:
+        - podSelector:
+            matchLabels:
+              app: nginx-proxy
+              tier: frontend
+      ports:
+        - protocol: TCP
+          port: 3000
+  egress:
+    # Allow to API service only
+    - to:
+        - podSelector:
+            matchLabels:
+              app: api
+              tier: middleware
+      ports:
+        - protocol: TCP
+          port: 8000
+    # Allow DNS
+    - to:
+        - namespaceSelector: {}
+          podSelector:
+            matchLabels:
+              k8s-app: kube-dns
+      ports:
+        - protocol: UDP
+          port: 53
+---
+# ===========================================
+# API SERVICE POLICIES (MIDDLEWARE)
+# ===========================================
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-api
+  namespace: hungryhippaahneties
+spec:
+  podSelector:
+    matchLabels:
+      app: api
+      tier: middleware
+  policyTypes:
+    - Ingress
+    - Egress
+  ingress:
+    # Allow from nginx proxy
+    - from:
+        - podSelector:
+            matchLabels:
+              app: nginx-proxy
+              tier: frontend
+      ports:
+        - protocol: TCP
+          port: 8000
+    # Allow from frontend
+    - from:
+        - podSelector:
+            matchLabels:
+              app: frontend
+              tier: frontend
+      ports:
+        - protocol: TCP
+          port: 8000
+  egress:
+    # Allow to backend service
+    - to:
+        - podSelector:
+            matchLabels:
+              app: backend
+              tier: middleware
+      ports:
+        - protocol: TCP
+          port: 8080
+    # Allow to PostgreSQL (backend tier)
+    - to:
+        - podSelector:
+            matchLabels:
+              app: postgresql
+              tier: backend
+      ports:
+        - protocol: TCP
+          port: 5432
+    # Allow to Redis cache
+    - to:
+        - podSelector:
+            matchLabels:
+              app: redis
+              tier: backend
+      ports:
+        - protocol: TCP
+          port: 6380  # TLS port
+    # Allow DNS
+    - to:
+        - namespaceSelector: {}
+          podSelector:
+            matchLabels:
+              k8s-app: kube-dns
+      ports:
+        - protocol: UDP
+          port: 53
+---
+# ===========================================
+# BACKEND SERVICE POLICIES (MIDDLEWARE)
+# ===========================================
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-backend
+  namespace: hungryhippaahneties
+spec:
+  podSelector:
+    matchLabels:
+      app: backend
+      tier: middleware
+  policyTypes:
+    - Ingress
+    - Egress
+  ingress:
+    # Allow from nginx proxy
+    - from:
+        - podSelector:
+            matchLabels:
+              app: nginx-proxy
+              tier: frontend
+      ports:
+        - protocol: TCP
+          port: 8080
+    # Allow from API service
+    - from:
+        - podSelector:
+            matchLabels:
+              app: api
+              tier: middleware
+      ports:
+        - protocol: TCP
+          port: 8080
+  egress:
+    # Allow to PostgreSQL
+    - to:
+        - podSelector:
+            matchLabels:
+              app: postgresql
+              tier: backend
+      ports:
+        - protocol: TCP
+          port: 5432
+    # Allow to Redis cache
+    - to:
+        - podSelector:
+            matchLabels:
+              app: redis
+              tier: backend
+      ports:
+        - protocol: TCP
+          port: 6380
+    # Allow DNS
+    - to:
+        - namespaceSelector: {}
+          podSelector:
+            matchLabels:
+              k8s-app: kube-dns
+      ports:
+        - protocol: UDP
+          port: 53
+---
+# ===========================================
+# POSTGRESQL POLICIES (BACKEND TIER)
+# ===========================================
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-postgresql
+  namespace: hungryhippaahneties
+spec:
+  podSelector:
+    matchLabels:
+      app: postgresql
+      tier: backend
+  policyTypes:
+    - Ingress
+    - Egress
+  ingress:
+    # Only allow from API service
+    - from:
+        - podSelector:
+            matchLabels:
+              app: api
+              tier: middleware
+      ports:
+        - protocol: TCP
+          port: 5432
+    # Only allow from backend service
+    - from:
+        - podSelector:
+            matchLabels:
+              app: backend
+              tier: middleware
+      ports:
+        - protocol: TCP
+          port: 5432
+  egress:
+    # PostgreSQL should not initiate outbound connections
+    # Only allow DNS for internal resolution
+    - to:
+        - namespaceSelector: {}
+          podSelector:
+            matchLabels:
+              k8s-app: kube-dns
+      ports:
+        - protocol: UDP
+          port: 53
+---
+# ===========================================
+# REDIS POLICIES (BACKEND TIER - CACHE)
+# ===========================================
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-redis
+  namespace: hungryhippaahneties
+spec:
+  podSelector:
+    matchLabels:
+      app: redis
+      tier: backend
+  policyTypes:
+    - Ingress
+    - Egress
+  ingress:
+    # Only allow from API service
+    - from:
+        - podSelector:
+            matchLabels:
+              app: api
+              tier: middleware
+      ports:
+        - protocol: TCP
+          port: 6380  # TLS port only
+    # Only allow from backend service
+    - from:
+        - podSelector:
+            matchLabels:
+              app: backend
+              tier: middleware
+      ports:
+        - protocol: TCP
+          port: 6380
+  egress:
+    # Redis should not initiate outbound connections
+    # Only DNS
+    - to:
+        - namespaceSelector: {}
+          podSelector:
+            matchLabels:
+              k8s-app: kube-dns
+      ports:
+        - protocol: UDP
+          port: 53
+---
+# ===========================================
+# WAF POLICIES
+# ===========================================
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-waf
+  namespace: hungryhippaahneties
+spec:
+  podSelector:
+    matchLabels:
+      app: modsecurity-waf
+      tier: frontend
+  policyTypes:
+    - Ingress
+    - Egress
+  ingress:
+    # WAF sits in front of nginx
+    - ports:
+        - protocol: TCP
+          port: 8443
+  egress:
+    # Forward to nginx proxy
+    - to:
+        - podSelector:
+            matchLabels:
+              app: nginx-proxy
+              tier: frontend
+      ports:
+        - protocol: TCP
+          port: 443
+    # Allow DNS
+    - to:
+        - namespaceSelector: {}
+          podSelector:
+            matchLabels:
+              k8s-app: kube-dns
+      ports:
+        - protocol: UDP
+          port: 53

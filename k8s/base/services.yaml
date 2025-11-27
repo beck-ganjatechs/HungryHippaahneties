@@ -1,0 +1,221 @@
+# HungryHippaahneties - Kubernetes Services
+# Based on OWASP Kubernetes Security Cheat Sheet
+
+# ===========================================
+# NGINX PROXY SERVICE (Internal)
+# ===========================================
+apiVersion: v1
+kind: Service
+metadata:
+  name: nginx-proxy-service
+  namespace: hungryhippaahneties
+  labels:
+    app: nginx-proxy
+    tier: frontend
+    compliance: hipaa
+spec:
+  type: ClusterIP
+  selector:
+    app: nginx-proxy
+    tier: frontend
+  ports:
+    - name: https
+      port: 443
+      targetPort: 443
+      protocol: TCP
+    - name: http
+      port: 80
+      targetPort: 80
+      protocol: TCP
+
+---
+# ===========================================
+# WAF SERVICE (Entry Point)
+# ===========================================
+apiVersion: v1
+kind: Service
+metadata:
+  name: waf-service
+  namespace: hungryhippaahneties
+  labels:
+    app: modsecurity-waf
+    tier: frontend
+    compliance: hipaa
+spec:
+  type: ClusterIP
+  selector:
+    app: modsecurity-waf
+    tier: frontend
+  ports:
+    - name: https
+      port: 443
+      targetPort: 8443
+      protocol: TCP
+    - name: http
+      port: 80
+      targetPort: 8080
+      protocol: TCP
+
+---
+# ===========================================
+# FRONTEND SERVICE
+# ===========================================
+apiVersion: v1
+kind: Service
+metadata:
+  name: frontend-service
+  namespace: hungryhippaahneties
+  labels:
+    app: frontend
+    tier: frontend
+    compliance: hipaa
+spec:
+  type: ClusterIP
+  selector:
+    app: frontend
+    tier: frontend
+  ports:
+    - name: http
+      port: 3000
+      targetPort: 3000
+      protocol: TCP
+
+---
+# ===========================================
+# API SERVICE
+# ===========================================
+apiVersion: v1
+kind: Service
+metadata:
+  name: api-service
+  namespace: hungryhippaahneties
+  labels:
+    app: api
+    tier: middleware
+    compliance: hipaa
+spec:
+  type: ClusterIP
+  selector:
+    app: api
+    tier: middleware
+  ports:
+    - name: http
+      port: 8000
+      targetPort: 8000
+      protocol: TCP
+
+---
+# ===========================================
+# BACKEND SERVICE
+# ===========================================
+apiVersion: v1
+kind: Service
+metadata:
+  name: backend-service
+  namespace: hungryhippaahneties
+  labels:
+    app: backend
+    tier: middleware
+    compliance: hipaa
+spec:
+  type: ClusterIP
+  selector:
+    app: backend
+    tier: middleware
+  ports:
+    - name: http
+      port: 8080
+      targetPort: 8080
+      protocol: TCP
+
+---
+# ===========================================
+# POSTGRESQL SERVICE
+# ===========================================
+apiVersion: v1
+kind: Service
+metadata:
+  name: postgresql-service
+  namespace: hungryhippaahneties
+  labels:
+    app: postgresql
+    tier: backend
+    compliance: hipaa
+spec:
+  type: ClusterIP
+  selector:
+    app: postgresql
+    tier: backend
+  ports:
+    - name: postgresql
+      port: 5432
+      targetPort: 5432
+      protocol: TCP
+
+---
+# PostgreSQL Headless Service for StatefulSet
+apiVersion: v1
+kind: Service
+metadata:
+  name: postgresql-headless
+  namespace: hungryhippaahneties
+  labels:
+    app: postgresql
+    tier: backend
+spec:
+  type: ClusterIP
+  clusterIP: None
+  selector:
+    app: postgresql
+    tier: backend
+  ports:
+    - name: postgresql
+      port: 5432
+      targetPort: 5432
+      protocol: TCP
+
+---
+# ===========================================
+# REDIS SERVICE
+# ===========================================
+apiVersion: v1
+kind: Service
+metadata:
+  name: redis-service
+  namespace: hungryhippaahneties
+  labels:
+    app: redis
+    tier: backend
+    compliance: hipaa
+spec:
+  type: ClusterIP
+  selector:
+    app: redis
+    tier: backend
+  ports:
+    - name: redis-tls
+      port: 6380
+      targetPort: 6380
+      protocol: TCP
+
+---
+# Redis Headless Service for StatefulSet
+apiVersion: v1
+kind: Service
+metadata:
+  name: redis-headless
+  namespace: hungryhippaahneties
+  labels:
+    app: redis
+    tier: backend
+spec:
+  type: ClusterIP
+  clusterIP: None
+  selector:
+    app: redis
+    tier: backend
+  ports:
+    - name: redis-tls
+      port: 6380
+      targetPort: 6380
+      protocol: TCP

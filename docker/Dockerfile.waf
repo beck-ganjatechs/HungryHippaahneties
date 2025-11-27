@@ -1,0 +1,43 @@
+# HungryHippaahneties - ModSecurity WAF Container
+# Based on OWASP Docker Security Cheat Sheet
+
+FROM owasp/modsecurity-crs:nginx-alpine AS production
+
+LABEL maintainer="security@hungryhippaahneties.local"
+LABEL version="1.0.0"
+LABEL description="HIPAA-compliant WAF with OWASP CRS"
+LABEL compliance="HIPAA"
+
+# Security: Create non-root user
+RUN addgroup -g 10001 -S waf-group && \
+    adduser -u 10001 -S -G waf-group -H -s /sbin/nologin waf-user
+
+# Security: Update packages
+RUN apk --no-cache upgrade && \
+    apk add --no-cache curl ca-certificates && \
+    rm -rf /var/cache/apk/*
+
+# Copy custom ModSecurity configuration
+COPY --chown=waf-user:waf-group configs/modsecurity/modsecurity.conf /etc/modsecurity.d/modsecurity.conf
+
+# Create log directories
+RUN mkdir -p /var/log/modsecurity && \
+    chown -R waf-user:waf-group /var/log/modsecurity && \
+    chmod 750 /var/log/modsecurity
+
+# Set paranoia level via environment
+ENV PARANOIA=2
+ENV ANOMALY_INBOUND=5
+ENV ANOMALY_OUTBOUND=4
+ENV BACKEND=http://nginx-proxy:443
+
+# Health check
+HEALTHCHECK --interval=30s --timeout=10s --start-period=10s --retries=3 \
+    CMD curl -f http://localhost:8080/health || exit 1
+
+# Security: Run as non-root where possible
+# Note: ModSecurity may require specific permissions
+
+EXPOSE 8443 8080
+
+CMD ["/docker-entrypoint.sh"]

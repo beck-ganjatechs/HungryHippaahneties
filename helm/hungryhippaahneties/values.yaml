@@ -1,0 +1,408 @@
+# HungryHippaahneties Helm Chart Values
+# HIPAA-Compliant Configuration
+
+# ===========================================
+# GLOBAL SETTINGS
+# ===========================================
+global:
+  namespace: hungryhippaahneties
+  environment: production
+  compliance: hipaa
+
+  # Image settings
+  imageRegistry: ""
+  imagePullSecrets: []
+  storageClass: encrypted-ssd
+
+  # Security settings
+  podSecurityStandard: restricted
+  tlsEnabled: true
+  auditLogging: true
+
+# ===========================================
+# NGINX REVERSE PROXY
+# ===========================================
+nginx:
+  enabled: true
+  replicaCount: 2
+
+  image:
+    repository: hungryhippaahneties/nginx-proxy
+    tag: "1.0.0"
+    pullPolicy: Always
+
+  service:
+    type: ClusterIP
+    port: 443
+    httpPort: 80
+
+  resources:
+    requests:
+      cpu: "100m"
+      memory: "128Mi"
+    limits:
+      cpu: "500m"
+      memory: "256Mi"
+
+  securityContext:
+    runAsNonRoot: true
+    runAsUser: 10001
+    runAsGroup: 10001
+    allowPrivilegeEscalation: false
+    readOnlyRootFilesystem: true
+    capabilities:
+      drop:
+        - ALL
+
+  # TLS Configuration
+  tls:
+    enabled: true
+    secretName: tls-certificates
+
+  # Rate limiting
+  rateLimit:
+    enabled: true
+    requestsPerSecond: 10
+    burst: 20
+
+# ===========================================
+# API SERVICE
+# ===========================================
+api:
+  enabled: true
+  replicaCount: 2
+
+  image:
+    repository: hungryhippaahneties/api
+    tag: "1.0.0"
+    pullPolicy: Always
+
+  service:
+    type: ClusterIP
+    port: 8000
+
+  resources:
+    requests:
+      cpu: "200m"
+      memory: "256Mi"
+    limits:
+      cpu: "1000m"
+      memory: "512Mi"
+
+  securityContext:
+    runAsNonRoot: true
+    runAsUser: 10001
+    runAsGroup: 10001
+    allowPrivilegeEscalation: false
+    readOnlyRootFilesystem: true
+    capabilities:
+      drop:
+        - ALL
+
+  env:
+    NODE_ENV: production
+    LOG_LEVEL: info
+    LOG_FORMAT: json
+
+# ===========================================
+# BACKEND SERVICE
+# ===========================================
+backend:
+  enabled: true
+  replicaCount: 2
+
+  image:
+    repository: hungryhippaahneties/backend
+    tag: "1.0.0"
+    pullPolicy: Always
+
+  service:
+    type: ClusterIP
+    port: 8080
+
+  resources:
+    requests:
+      cpu: "200m"
+      memory: "256Mi"
+    limits:
+      cpu: "1000m"
+      memory: "512Mi"
+
+  securityContext:
+    runAsNonRoot: true
+    runAsUser: 10001
+    runAsGroup: 10001
+    allowPrivilegeEscalation: false
+    readOnlyRootFilesystem: true
+    capabilities:
+      drop:
+        - ALL
+
+# ===========================================
+# FRONTEND
+# ===========================================
+frontend:
+  enabled: true
+  replicaCount: 2
+
+  image:
+    repository: hungryhippaahneties/frontend
+    tag: "1.0.0"
+    pullPolicy: Always
+
+  service:
+    type: ClusterIP
+    port: 3000
+
+  resources:
+    requests:
+      cpu: "50m"
+      memory: "64Mi"
+    limits:
+      cpu: "200m"
+      memory: "128Mi"
+
+  securityContext:
+    runAsNonRoot: true
+    runAsUser: 10001
+    runAsGroup: 10001
+    allowPrivilegeEscalation: false
+    readOnlyRootFilesystem: true
+    capabilities:
+      drop:
+        - ALL
+
+# ===========================================
+# WAF (ModSecurity)
+# ===========================================
+waf:
+  enabled: true
+  replicaCount: 2
+
+  image:
+    repository: hungryhippaahneties/waf
+    tag: "1.0.0"
+    pullPolicy: Always
+
+  service:
+    type: ClusterIP
+    port: 8443
+    httpPort: 8080
+
+  resources:
+    requests:
+      cpu: "200m"
+      memory: "256Mi"
+    limits:
+      cpu: "1000m"
+      memory: "512Mi"
+
+  # OWASP CRS settings
+  paranoiaLevel: 2
+  anomalyInbound: 5
+  anomalyOutbound: 4
+
+# ===========================================
+# POSTGRESQL
+# ===========================================
+postgresql:
+  enabled: true
+
+  auth:
+    existingSecret: db-credentials
+    secretKeys:
+      adminPasswordKey: POSTGRES_PASSWORD
+      userPasswordKey: POSTGRES_PASSWORD
+
+  primary:
+    resources:
+      requests:
+        cpu: "250m"
+        memory: "512Mi"
+      limits:
+        cpu: "1000m"
+        memory: "1Gi"
+
+    persistence:
+      enabled: true
+      storageClass: encrypted-ssd
+      size: 20Gi
+
+    # Security context
+    containerSecurityContext:
+      enabled: true
+      runAsUser: 999
+      runAsNonRoot: true
+      allowPrivilegeEscalation: false
+
+  # TLS
+  tls:
+    enabled: true
+    certificatesSecret: tls-certificates
+    certFilename: tls.crt
+    certKeyFilename: tls.key
+
+  # Audit logging
+  audit:
+    logHostname: true
+    logConnections: true
+    logDisconnections: true
+    pgAuditLog: "all"
+
+# ===========================================
+# REDIS
+# ===========================================
+redis:
+  enabled: true
+
+  auth:
+    enabled: true
+    existingSecret: redis-credentials
+    existingSecretPasswordKey: REDIS_PASSWORD
+
+  master:
+    resources:
+      requests:
+        cpu: "100m"
+        memory: "128Mi"
+      limits:
+        cpu: "500m"
+        memory: "256Mi"
+
+    persistence:
+      enabled: true
+      storageClass: encrypted-ssd
+      size: 5Gi
+
+    containerSecurityContext:
+      enabled: true
+      runAsUser: 999
+      runAsNonRoot: true
+      allowPrivilegeEscalation: false
+      readOnlyRootFilesystem: true
+
+  # TLS
+  tls:
+    enabled: true
+    certificatesSecret: tls-certificates
+
+  # Disable replica for simplicity (enable for HA)
+  replica:
+    replicaCount: 0
+
+# ===========================================
+# INGRESS
+# ===========================================
+ingress:
+  enabled: true
+  className: nginx
+
+  annotations:
+    nginx.ingress.kubernetes.io/ssl-redirect: "true"
+    nginx.ingress.kubernetes.io/force-ssl-redirect: "true"
+    nginx.ingress.kubernetes.io/enable-modsecurity: "true"
+    nginx.ingress.kubernetes.io/enable-owasp-core-rules: "true"
+
+  hosts:
+    - host: hungryhippaahneties.example.com
+      paths:
+        - path: /
+          pathType: Prefix
+
+  tls:
+    - secretName: tls-certificates
+      hosts:
+        - hungryhippaahneties.example.com
+
+# ===========================================
+# NETWORK POLICIES
+# ===========================================
+networkPolicies:
+  enabled: true
+  defaultDenyAll: true
+
+# ===========================================
+# POD DISRUPTION BUDGETS
+# ===========================================
+podDisruptionBudget:
+  enabled: true
+  minAvailable: 1
+
+# ===========================================
+# MONITORING
+# ===========================================
+monitoring:
+  enabled: true
+
+  serviceMonitor:
+    enabled: true
+    interval: 30s
+
+  prometheusRules:
+    enabled: true
+
+# ===========================================
+# LOGGING
+# ===========================================
+logging:
+  enabled: true
+  format: json
+  level: info
+
+  # Fluentd
+  fluentd:
+    enabled: true
+    elasticsearch:
+      host: elasticsearch-service
+      port: 9200
+      scheme: https
+
+# ===========================================
+# SECRETS (External Secrets Operator)
+# ===========================================
+externalSecrets:
+  enabled: false
+  secretStore:
+    name: vault-backend
+    kind: ClusterSecretStore
+
+# ===========================================
+# CERT-MANAGER
+# ===========================================
+certManager:
+  enabled: true
+  issuer:
+    name: letsencrypt-prod
+    kind: ClusterIssuer
+
+# ===========================================
+# HIPAA COMPLIANCE SETTINGS
+# ===========================================
+hipaa:
+  # Data retention (7 years for HIPAA)
+  dataRetentionDays: 2555
+
+  # Encryption settings
+  encryption:
+    atRest: true
+    inTransit: true
+    algorithm: AES-256-GCM
+
+  # Session settings
+  session:
+    timeout: 900  # 15 minutes
+    maxConcurrent: 1
+
+  # Authentication settings
+  authentication:
+    mfaRequired: true
+    passwordMinLength: 15
+    maxLoginAttempts: 5
+    lockoutDuration: 300
+
+  # Audit settings
+  audit:
+    enabled: true
+    retentionDays: 2555
+    includeRequestBody: false
+    maskPHI: true

@@ -1,0 +1,78 @@
+# HungryHippaahneties - HIPAA-Compliant Kubernetes Namespace
+# Based on OWASP Kubernetes Security Cheat Sheet
+
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: hungryhippaahneties
+  labels:
+    name: hungryhippaahneties
+    environment: production
+    compliance: hipaa
+    # Pod Security Standards - RESTRICTED level (most secure)
+    pod-security.kubernetes.io/enforce: restricted
+    pod-security.kubernetes.io/enforce-version: latest
+    pod-security.kubernetes.io/audit: restricted
+    pod-security.kubernetes.io/audit-version: latest
+    pod-security.kubernetes.io/warn: restricted
+    pod-security.kubernetes.io/warn-version: latest
+  annotations:
+    description: "HIPAA-compliant application stack"
+    owner: "security-team"
+    contact: "security@example.com"
+---
+# Resource Quota - Prevent DoS and resource abuse
+apiVersion: v1
+kind: ResourceQuota
+metadata:
+  name: hipaa-resource-quota
+  namespace: hungryhippaahneties
+spec:
+  hard:
+    # Compute resources
+    requests.cpu: "8"
+    requests.memory: 16Gi
+    limits.cpu: "16"
+    limits.memory: 32Gi
+    # Object counts
+    pods: "50"
+    services: "20"
+    secrets: "50"
+    configmaps: "50"
+    persistentvolumeclaims: "20"
+    # Prevent nodeport services (use ingress instead)
+    services.nodeports: "0"
+---
+# Limit Range - Default and maximum resource limits
+apiVersion: v1
+kind: LimitRange
+metadata:
+  name: hipaa-limit-range
+  namespace: hungryhippaahneties
+spec:
+  limits:
+    # Container defaults
+    - type: Container
+      default:
+        cpu: "500m"
+        memory: "512Mi"
+      defaultRequest:
+        cpu: "100m"
+        memory: "128Mi"
+      max:
+        cpu: "2"
+        memory: "4Gi"
+      min:
+        cpu: "50m"
+        memory: "64Mi"
+    # Pod limits
+    - type: Pod
+      max:
+        cpu: "4"
+        memory: "8Gi"
+    # PVC limits
+    - type: PersistentVolumeClaim
+      max:
+        storage: "100Gi"
+      min:
+        storage: "1Gi"

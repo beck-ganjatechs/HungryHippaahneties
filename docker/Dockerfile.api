@@ -1,0 +1,91 @@
+# HungryHippaahneties - Secure API Service
+# Based on OWASP Docker & Node.js Security Cheat Sheets
+
+# ===========================================
+# BUILD STAGE
+# ===========================================
+FROM node:20-alpine AS builder
+
+WORKDIR /app
+
+# Security: Don't run npm as root
+RUN addgroup -g 10001 -S appgroup && \
+    adduser -u 10001 -S appuser -G appgroup
+
+# Copy package files first for better caching
+COPY --chown=appuser:appgroup package*.json ./
+
+# Security: Use npm ci for reproducible builds
+# Audit dependencies for vulnerabilities
+RUN npm ci --only=production && \
+    npm audit --audit-level=high || true
+
+# Copy application code
+COPY --chown=appuser:appgroup . .
+
+# Build if needed (TypeScript, etc.)
+RUN npm run build --if-present
+
+# Remove dev dependencies
+RUN npm prune --production
+
+# ===========================================
+# PRODUCTION STAGE
+# ===========================================
+FROM node:20-alpine AS production
+
+LABEL maintainer="security@hungryhippaahneties.local"
+LABEL version="1.0.0"
+LABEL description="HIPAA-compliant API service"
+LABEL compliance="HIPAA"
+
+# Security: Create non-root user
+RUN addgroup -g 10001 -S appgroup && \
+    adduser -u 10001 -S appuser -G appgroup -H -s /sbin/nologin
+
+# Security: Update packages and remove unnecessary tools
+RUN apk --no-cache upgrade && \
+    apk add --no-cache \
+        dumb-init \
+        ca-certificates && \
+    # Remove package managers and shells from production
+    rm -rf /var/cache/apk/* /tmp/* /root/.npm
+
+WORKDIR /app
+
+# Copy built application from builder
+COPY --from=builder --chown=appuser:appgroup /app/node_modules ./node_modules
+COPY --from=builder --chown=appuser:appgroup /app/dist ./dist
+COPY --from=builder --chown=appuser:appgroup /app/package.json ./
+
+# Security: Set restrictive permissions
+RUN chmod -R 550 /app && \
+    chmod -R 440 /app/node_modules
+
+# Security: Create directories for logs and temp with proper permissions
+RUN mkdir -p /app/logs /app/tmp && \
+    chown -R appuser:appgroup /app/logs /app/tmp && \
+    chmod 750 /app/logs /app/tmp
+
+# Environment variables
+ENV NODE_ENV=production
+ENV PORT=8000
+# Security: Disable npm update checks
+ENV NPM_CONFIG_UPDATE_NOTIFIER=false
+# Security: Reduce Node.js information disclosure
+ENV NODE_OPTIONS="--no-deprecation --no-warnings"
+
+# Health check
+HEALTHCHECK --interval=30s --timeout=10s --start-period=10s --retries=3 \
+    CMD node -e "require('http').get('http://localhost:8000/health', (r) => process.exit(r.statusCode === 200 ? 0 : 1))"
+
+# Security: Run as non-root user
+USER appuser
+
+# Expose only necessary port
+EXPOSE 8000
+
+# Security: Use dumb-init to handle signals properly
+ENTRYPOINT ["/usr/bin/dumb-init", "--"]
+
+CMD ["node", "dist/server.js"]

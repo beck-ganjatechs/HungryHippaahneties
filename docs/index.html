@@ -1,0 +1,2507 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>HungryHippaahneties - HIPAA-Compliant K8s Stack</title>
+    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;500;700;900&family=Rajdhani:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script>
+    <style>
+        :root {
+            --primary-purple: #8B5CF6;
+            --primary-pink: #EC4899;
+            --primary-cyan: #06B6D4;
+            --dark-bg: #0a0a0f;
+            --darker-bg: #050508;
+            --card-bg: rgba(139, 92, 246, 0.05);
+            --card-border: rgba(139, 92, 246, 0.2);
+            --text-primary: #f0f0f5;
+            --text-secondary: #a0a0b0;
+            --glow-purple: 0 0 20px rgba(139, 92, 246, 0.5);
+            --glow-pink: 0 0 20px rgba(236, 72, 153, 0.5);
+            --glow-cyan: 0 0 20px rgba(6, 182, 212, 0.5);
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        html {
+            scroll-behavior: smooth;
+        }
+
+        body {
+            font-family: 'Rajdhani', sans-serif;
+            background: var(--dark-bg);
+            color: var(--text-primary);
+            line-height: 1.7;
+            overflow-x: hidden;
+            font-size: 18px;
+            font-weight: 500;
+        }
+
+        /* Video Background */
+        .video-background {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: -2;
+            overflow: hidden;
+        }
+
+        .video-background video {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            min-width: 100%;
+            min-height: 100%;
+            width: auto;
+            height: auto;
+            transform: translate(-50%, -50%);
+            object-fit: cover;
+        }
+
+        .video-overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(
+                180deg,
+                rgba(10, 10, 15, 0.7) 0%,
+                rgba(10, 10, 15, 0.85) 50%,
+                rgba(10, 10, 15, 0.95) 100%
+            );
+        }
+
+        /* CRT Scan Lines Effect */
+        .scanlines {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: 9999;
+            pointer-events: none;
+            background: repeating-linear-gradient(
+                0deg,
+                rgba(0, 0, 0, 0.15) 0px,
+                rgba(0, 0, 0, 0.15) 1px,
+                transparent 1px,
+                transparent 3px
+            );
+            animation: scanlineFlicker 0.1s infinite;
+        }
+
+        .scanlines::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(
+                180deg,
+                transparent 0%,
+                rgba(139, 92, 246, 0.03) 50%,
+                transparent 100%
+            );
+            animation: scanlineMove 8s linear infinite;
+        }
+
+        @keyframes scanlineFlicker {
+            0% { opacity: 0.9; }
+            50% { opacity: 1; }
+            100% { opacity: 0.9; }
+        }
+
+        @keyframes scanlineMove {
+            0% { transform: translateY(-100%); }
+            100% { transform: translateY(100%); }
+        }
+
+        /* Node Mesh Canvas */
+        #nodeMesh {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: -1;
+            pointer-events: none;
+        }
+
+        /* Animated Background (fallback/overlay) */
+        .bg-animation {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: -1;
+            background:
+                radial-gradient(ellipse at 20% 20%, rgba(139, 92, 246, 0.1) 0%, transparent 50%),
+                radial-gradient(ellipse at 80% 80%, rgba(236, 72, 153, 0.08) 0%, transparent 50%),
+                radial-gradient(ellipse at 50% 50%, rgba(6, 182, 212, 0.05) 0%, transparent 70%);
+            pointer-events: none;
+        }
+
+        .bg-grid {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: -1;
+            background-image:
+                linear-gradient(rgba(139, 92, 246, 0.03) 1px, transparent 1px),
+                linear-gradient(90deg, rgba(139, 92, 246, 0.03) 1px, transparent 1px);
+            background-size: 50px 50px;
+            animation: gridMove 20s linear infinite;
+        }
+
+        @keyframes gridMove {
+            0% { transform: translateY(0); }
+            100% { transform: translateY(50px); }
+        }
+
+        /* Floating Tentacles Animation */
+        .tentacle {
+            position: fixed;
+            opacity: 0.1;
+            z-index: -1;
+            animation: float 8s ease-in-out infinite;
+        }
+
+        .tentacle-1 {
+            top: 10%;
+            left: -5%;
+            width: 200px;
+            animation-delay: 0s;
+        }
+
+        .tentacle-2 {
+            top: 60%;
+            right: -5%;
+            width: 250px;
+            animation-delay: 2s;
+        }
+
+        .tentacle-3 {
+            bottom: 10%;
+            left: 10%;
+            width: 180px;
+            animation-delay: 4s;
+        }
+
+        @keyframes float {
+            0%, 100% { transform: translateY(0) rotate(0deg); }
+            50% { transform: translateY(-20px) rotate(5deg); }
+        }
+
+        /* Navigation */
+        nav {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            z-index: 1000;
+            background: rgba(10, 10, 15, 0.9);
+            backdrop-filter: blur(20px);
+            border-bottom: 1px solid var(--card-border);
+            padding: 1rem 2rem;
+        }
+
+        .nav-container {
+            max-width: 1400px;
+            margin: 0 auto;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .logo {
+            font-family: 'Orbitron', sans-serif;
+            font-size: 1.5rem;
+            font-weight: 900;
+            background: linear-gradient(135deg, var(--primary-purple), var(--primary-pink));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .logo-icon {
+            font-size: 2rem;
+        }
+
+        .nav-links {
+            display: flex;
+            gap: 0.5rem;
+            flex-wrap: wrap;
+            justify-content: center;
+        }
+
+        .nav-links a {
+            color: var(--text-secondary);
+            text-decoration: none;
+            padding: 0.5rem 1rem;
+            border-radius: 8px;
+            font-weight: 600;
+            font-size: 1rem;
+            transition: all 0.3s ease;
+            border: 1px solid transparent;
+        }
+
+        .nav-links a:hover {
+            color: var(--primary-purple);
+            background: rgba(139, 92, 246, 0.1);
+            border-color: var(--card-border);
+        }
+
+        /* Hero Section */
+        .hero {
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            text-align: center;
+            padding: 6rem 2rem 4rem;
+            position: relative;
+        }
+
+        .hero-content {
+            max-width: 1000px;
+            overflow: visible;
+            padding: 0 2rem;
+        }
+
+        .hero-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+            background: linear-gradient(135deg, rgba(139, 92, 246, 0.2), rgba(236, 72, 153, 0.2));
+            border: 1px solid var(--card-border);
+            padding: 0.5rem 1.5rem;
+            border-radius: 50px;
+            font-size: 1rem;
+            font-weight: 600;
+            margin-bottom: 2rem;
+            animation: pulse 2s ease-in-out infinite;
+        }
+
+        @keyframes pulse {
+            0%, 100% { box-shadow: 0 0 0 0 rgba(139, 92, 246, 0.4); }
+            50% { box-shadow: 0 0 0 10px rgba(139, 92, 246, 0); }
+        }
+
+        .hero h1 {
+            font-family: 'Orbitron', sans-serif;
+            font-size: clamp(2.5rem, 8vw, 5rem);
+            font-weight: 900;
+            line-height: 1.1;
+            margin-bottom: 1.5rem;
+            background: linear-gradient(135deg, #fff 0%, var(--primary-purple) 50%, var(--primary-pink) 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            filter: drop-shadow(0 0 20px rgba(139, 92, 246, 0.5));
+            padding-right: 0.1em;
+            display: inline-block;
+        }
+
+        .hero-subtitle {
+            font-size: 1.3rem;
+            color: var(--text-secondary);
+            margin-bottom: 2rem;
+            max-width: 600px;
+            margin-left: auto;
+            margin-right: auto;
+        }
+
+        .hero-stats {
+            display: flex;
+            justify-content: center;
+            gap: 3rem;
+            flex-wrap: wrap;
+            margin-top: 3rem;
+        }
+
+        .stat {
+            text-align: center;
+        }
+
+        .stat-value {
+            font-family: 'Orbitron', sans-serif;
+            font-size: 2.5rem;
+            font-weight: 700;
+            color: var(--primary-cyan);
+            text-shadow: var(--glow-cyan);
+        }
+
+        .stat-label {
+            font-size: 1rem;
+            font-weight: 600;
+            color: var(--text-secondary);
+            text-transform: uppercase;
+            letter-spacing: 2px;
+        }
+
+        /* Section Styles */
+        section {
+            padding: 5rem 2rem;
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+
+        .section-header {
+            text-align: center;
+            margin-bottom: 4rem;
+        }
+
+        .section-tag {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 1rem;
+            font-weight: 600;
+            color: var(--primary-pink);
+            text-transform: uppercase;
+            letter-spacing: 3px;
+            margin-bottom: 1rem;
+        }
+
+        .section-title {
+            font-family: 'Orbitron', sans-serif;
+            font-size: clamp(2rem, 5vw, 3rem);
+            font-weight: 700;
+            margin-bottom: 1rem;
+            background: linear-gradient(135deg, var(--text-primary), var(--primary-purple));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .section-desc {
+            color: var(--text-secondary);
+            max-width: 700px;
+            margin: 0 auto;
+            font-size: 1.2rem;
+            font-weight: 500;
+        }
+
+        /* Cards */
+        .card-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
+            gap: 2rem;
+        }
+
+        .card {
+            background: var(--card-bg);
+            border: 1px solid var(--card-border);
+            border-radius: 16px;
+            padding: 2rem;
+            transition: all 0.3s ease;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 3px;
+            background: linear-gradient(90deg, var(--primary-purple), var(--primary-pink), var(--primary-cyan));
+            opacity: 0;
+            transition: opacity 0.3s ease;
+        }
+
+        .card:hover {
+            transform: translateY(-5px);
+            border-color: var(--primary-purple);
+            box-shadow: var(--glow-purple);
+        }
+
+        .card:hover::before {
+            opacity: 1;
+        }
+
+        .card-icon {
+            width: 60px;
+            height: 60px;
+            border-radius: 12px;
+            background: linear-gradient(135deg, rgba(139, 92, 246, 0.2), rgba(236, 72, 153, 0.2));
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.8rem;
+            margin-bottom: 1.5rem;
+        }
+
+        .card h3 {
+            font-family: 'Orbitron', sans-serif;
+            font-size: 1.4rem;
+            margin-bottom: 1rem;
+            color: var(--text-primary);
+        }
+
+        .card p {
+            color: var(--text-secondary);
+            font-size: 1.1rem;
+            font-weight: 500;
+        }
+
+        /* Architecture Diagram */
+        .architecture-container {
+            background: var(--card-bg);
+            border: 1px solid var(--card-border);
+            border-radius: 16px;
+            padding: 3rem;
+            overflow-x: auto;
+        }
+
+        .arch-diagram {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 0.85rem;
+            font-weight: 500;
+            line-height: 1.4;
+            color: var(--primary-cyan);
+            white-space: pre;
+            text-align: center;
+        }
+
+        .mermaid-container {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 2rem;
+            min-height: 500px;
+        }
+
+        .mermaid {
+            font-family: 'Rajdhani', sans-serif !important;
+        }
+
+        .mermaid .node rect,
+        .mermaid .node circle,
+        .mermaid .node ellipse,
+        .mermaid .node polygon,
+        .mermaid .node path {
+            stroke-width: 2px !important;
+        }
+
+        .mermaid .edgePath path {
+            stroke: var(--primary-purple) !important;
+            stroke-width: 2px !important;
+        }
+
+        .mermaid .edgePath marker path {
+            fill: var(--primary-purple) !important;
+        }
+
+        .mermaid .cluster rect {
+            fill: rgba(139, 92, 246, 0.1) !important;
+            stroke: var(--primary-purple) !important;
+            stroke-width: 2px !important;
+            rx: 10px !important;
+        }
+
+        .mermaid .cluster-label .nodeLabel {
+            color: var(--text-primary) !important;
+            font-weight: 600 !important;
+            font-size: 1.1rem !important;
+        }
+
+        .mermaid .nodeLabel {
+            color: #fff !important;
+            font-weight: 500 !important;
+            font-size: 0.95rem !important;
+        }
+
+        /* Code Blocks */
+        .code-block {
+            background: rgba(0, 0, 0, 0.5);
+            border: 1px solid var(--card-border);
+            border-radius: 12px;
+            padding: 1.5rem;
+            overflow-x: auto;
+            margin: 1.5rem 0;
+        }
+
+        .code-block pre {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 0.95rem;
+            font-weight: 500;
+            color: var(--text-primary);
+            margin: 0;
+        }
+
+        .code-header {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            margin-bottom: 1rem;
+            padding-bottom: 1rem;
+            border-bottom: 1px solid var(--card-border);
+        }
+
+        .code-dot {
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+        }
+
+        .code-dot.red { background: #ff5f56; }
+        .code-dot.yellow { background: #ffbd2e; }
+        .code-dot.green { background: #27ca40; }
+
+        .code-title {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 0.95rem;
+            font-weight: 600;
+            color: var(--text-secondary);
+            margin-left: 1rem;
+        }
+
+        /* Tables */
+        .table-container {
+            overflow-x: auto;
+            margin: 2rem 0;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 1.05rem;
+        }
+
+        th {
+            background: rgba(139, 92, 246, 0.2);
+            padding: 1rem;
+            text-align: left;
+            font-family: 'Orbitron', sans-serif;
+            font-weight: 600;
+            color: var(--primary-purple);
+            border-bottom: 2px solid var(--primary-purple);
+        }
+
+        td {
+            padding: 1rem;
+            border-bottom: 1px solid var(--card-border);
+            color: var(--text-secondary);
+            font-weight: 500;
+        }
+
+        tr:hover td {
+            background: rgba(139, 92, 246, 0.05);
+        }
+
+        .status-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.3rem;
+            padding: 0.3rem 0.8rem;
+            border-radius: 20px;
+            font-size: 0.95rem;
+            font-weight: 700;
+        }
+
+        .status-success {
+            background: rgba(34, 197, 94, 0.2);
+            color: #22c55e;
+        }
+
+        .status-warning {
+            background: rgba(234, 179, 8, 0.2);
+            color: #eab308;
+        }
+
+        /* Accordion */
+        .accordion {
+            margin: 2rem 0;
+        }
+
+        .accordion-item {
+            background: var(--card-bg);
+            border: 1px solid var(--card-border);
+            border-radius: 12px;
+            margin-bottom: 1rem;
+            overflow: hidden;
+        }
+
+        .accordion-header {
+            padding: 1.5rem;
+            cursor: pointer;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            transition: background 0.3s ease;
+        }
+
+        .accordion-header:hover {
+            background: rgba(139, 92, 246, 0.1);
+        }
+
+        .accordion-title {
+            font-family: 'Orbitron', sans-serif;
+            font-size: 1.2rem;
+            font-weight: 600;
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+        }
+
+        .accordion-icon {
+            font-size: 1.5rem;
+        }
+
+        .accordion-arrow {
+            transition: transform 0.3s ease;
+            font-size: 1.2rem;
+            color: var(--primary-purple);
+        }
+
+        .accordion-item.active .accordion-arrow {
+            transform: rotate(180deg);
+        }
+
+        .accordion-content {
+            max-height: 0;
+            overflow: hidden;
+            transition: max-height 0.3s ease;
+        }
+
+        .accordion-item.active .accordion-content {
+            max-height: 5000px;
+        }
+
+        .accordion-body {
+            padding: 0 1.5rem 1.5rem;
+        }
+
+        /* Checklist */
+        .checklist {
+            list-style: none;
+            margin: 1.5rem 0;
+        }
+
+        .checklist li {
+            display: flex;
+            align-items: flex-start;
+            gap: 1rem;
+            padding: 0.8rem 0;
+            border-bottom: 1px solid var(--card-border);
+            font-size: 1.05rem;
+            font-weight: 500;
+        }
+
+        .checklist-icon {
+            color: var(--primary-cyan);
+            font-size: 1.2rem;
+            flex-shrink: 0;
+        }
+
+        /* Timeline */
+        .timeline {
+            position: relative;
+            padding-left: 3rem;
+        }
+
+        .timeline::before {
+            content: '';
+            position: absolute;
+            left: 0.75rem;
+            top: 0;
+            bottom: 0;
+            width: 2px;
+            background: linear-gradient(180deg, var(--primary-purple), var(--primary-pink));
+        }
+
+        .timeline-item {
+            position: relative;
+            padding-bottom: 2rem;
+        }
+
+        .timeline-dot {
+            position: absolute;
+            left: -2.35rem;
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+            background: var(--primary-purple);
+            border: 3px solid var(--dark-bg);
+            box-shadow: var(--glow-purple);
+        }
+
+        .timeline-title {
+            font-family: 'Orbitron', sans-serif;
+            font-size: 1.2rem;
+            font-weight: 600;
+            margin-bottom: 0.5rem;
+            color: var(--text-primary);
+        }
+
+        .timeline-content {
+            color: var(--text-secondary);
+            font-size: 1.05rem;
+            font-weight: 500;
+        }
+
+        /* Buttons */
+        .btn {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+            padding: 1rem 2rem;
+            border-radius: 12px;
+            font-family: 'Rajdhani', sans-serif;
+            font-weight: 700;
+            font-size: 1.1rem;
+            text-decoration: none;
+            transition: all 0.3s ease;
+            border: none;
+            cursor: pointer;
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, var(--primary-purple), var(--primary-pink));
+            color: white;
+            box-shadow: var(--glow-purple);
+        }
+
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 0 30px rgba(139, 92, 246, 0.6);
+        }
+
+        .btn-secondary {
+            background: transparent;
+            color: var(--primary-purple);
+            border: 2px solid var(--primary-purple);
+        }
+
+        .btn-secondary:hover {
+            background: rgba(139, 92, 246, 0.1);
+        }
+
+        /* Alert Boxes */
+        .alert {
+            padding: 1.5rem;
+            border-radius: 12px;
+            margin: 1.5rem 0;
+            display: flex;
+            gap: 1rem;
+            align-items: flex-start;
+        }
+
+        .alert-icon {
+            font-size: 1.5rem;
+            flex-shrink: 0;
+        }
+
+        .alert-warning {
+            background: rgba(234, 179, 8, 0.1);
+            border: 1px solid rgba(234, 179, 8, 0.3);
+        }
+
+        .alert-warning .alert-icon {
+            color: #eab308;
+        }
+
+        .alert-info {
+            background: rgba(6, 182, 212, 0.1);
+            border: 1px solid rgba(6, 182, 212, 0.3);
+        }
+
+        .alert-info .alert-icon {
+            color: var(--primary-cyan);
+        }
+
+        .alert-danger {
+            background: rgba(239, 68, 68, 0.1);
+            border: 1px solid rgba(239, 68, 68, 0.3);
+        }
+
+        .alert-danger .alert-icon {
+            color: #ef4444;
+        }
+
+        /* Footer */
+        footer {
+            background: var(--darker-bg);
+            border-top: 1px solid var(--card-border);
+            padding: 3rem 2rem;
+            text-align: center;
+        }
+
+        .footer-logo {
+            font-family: 'Orbitron', sans-serif;
+            font-size: 1.5rem;
+            font-weight: 700;
+            background: linear-gradient(135deg, var(--primary-purple), var(--primary-pink));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            margin-bottom: 1rem;
+        }
+
+        .footer-text {
+            color: var(--text-secondary);
+            font-size: 1.05rem;
+            font-weight: 500;
+        }
+
+        /* Scroll to top */
+        .scroll-top {
+            position: fixed;
+            bottom: 2rem;
+            right: 2rem;
+            width: 50px;
+            height: 50px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, var(--primary-purple), var(--primary-pink));
+            color: white;
+            border: none;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.5rem;
+            opacity: 0;
+            visibility: hidden;
+            transition: all 0.3s ease;
+            box-shadow: var(--glow-purple);
+            z-index: 1000;
+        }
+
+        .scroll-top.visible {
+            opacity: 1;
+            visibility: visible;
+        }
+
+        .scroll-top:hover {
+            transform: translateY(-5px);
+        }
+
+        /* Responsive */
+        @media (max-width: 768px) {
+            nav {
+                padding: 1rem;
+            }
+
+            .nav-links {
+                display: none;
+            }
+
+            .hero {
+                padding: 5rem 1rem 3rem;
+            }
+
+            .hero-stats {
+                gap: 1.5rem;
+            }
+
+            .stat-value {
+                font-size: 2rem;
+            }
+
+            section {
+                padding: 3rem 1rem;
+            }
+
+            .card-grid {
+                grid-template-columns: 1fr;
+            }
+
+            .architecture-container {
+                padding: 1rem;
+            }
+
+            .arch-diagram {
+                font-size: 0.5rem;
+            }
+        }
+
+        /* Syntax Highlighting */
+        .hljs-keyword { color: var(--primary-pink); }
+        .hljs-string { color: #22c55e; }
+        .hljs-comment { color: #6b7280; }
+        .hljs-number { color: var(--primary-cyan); }
+        .hljs-attr { color: var(--primary-purple); }
+
+        /* Section Divider */
+        .section-divider {
+            height: 1px;
+            background: linear-gradient(90deg, transparent, var(--primary-purple), var(--primary-pink), transparent);
+            margin: 4rem 0;
+        }
+
+        /* Feature List */
+        .feature-list {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 1rem;
+            margin: 2rem 0;
+        }
+
+        .feature-item {
+            display: flex;
+            align-items: center;
+            gap: 0.8rem;
+            padding: 1rem;
+            background: var(--card-bg);
+            border-radius: 8px;
+            border: 1px solid var(--card-border);
+            font-size: 1.05rem;
+            font-weight: 500;
+        }
+
+        .feature-icon {
+            color: var(--primary-cyan);
+            font-size: 1.3rem;
+            font-weight: 700;
+        }
+
+        /* TOC */
+        .toc {
+            position: sticky;
+            top: 100px;
+            max-height: calc(100vh - 120px);
+            overflow-y: auto;
+            padding-right: 1rem;
+        }
+
+        .toc-title {
+            font-family: 'Orbitron', sans-serif;
+            font-size: 1rem;
+            font-weight: 600;
+            color: var(--primary-purple);
+            text-transform: uppercase;
+            letter-spacing: 2px;
+            margin-bottom: 1rem;
+        }
+
+        .toc-list {
+            list-style: none;
+        }
+
+        .toc-list li {
+            margin-bottom: 0.5rem;
+        }
+
+        .toc-list a {
+            color: var(--text-secondary);
+            text-decoration: none;
+            font-size: 1rem;
+            font-weight: 500;
+            transition: color 0.3s ease;
+            display: block;
+            padding: 0.3rem 0;
+        }
+
+        .toc-list a:hover {
+            color: var(--primary-purple);
+        }
+
+        .toc-list .active {
+            color: var(--primary-purple);
+            border-left: 2px solid var(--primary-purple);
+            padding-left: 0.5rem;
+        }
+
+        /* Main Layout with TOC */
+        .main-layout {
+            display: grid;
+            grid-template-columns: 1fr 250px;
+            gap: 3rem;
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 0 2rem;
+        }
+
+        @media (max-width: 1024px) {
+            .main-layout {
+                grid-template-columns: 1fr;
+            }
+
+            .toc {
+                display: none;
+            }
+        }
+
+        /* Copy button */
+        .copy-btn {
+            position: absolute;
+            top: 0.5rem;
+            right: 0.5rem;
+            background: rgba(139, 92, 246, 0.2);
+            border: 1px solid var(--card-border);
+            color: var(--text-secondary);
+            padding: 0.4rem 0.8rem;
+            border-radius: 6px;
+            font-size: 0.9rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .copy-btn:hover {
+            background: var(--primary-purple);
+            color: white;
+        }
+
+        .code-block {
+            position: relative;
+        }
+    </style>
+</head>
+<body>
+    <!-- Video Background -->
+    <div class="video-background">
+        <video autoplay muted loop playsinline id="bgVideo">
+            <source src="background.mp4" type="video/mp4">
+        </video>
+        <div class="video-overlay"></div>
+    </div>
+
+    <!-- Node Mesh Canvas -->
+    <canvas id="nodeMesh"></canvas>
+
+    <!-- CRT Scan Lines Overlay -->
+    <div class="scanlines"></div>
+
+    <!-- Background Elements (fallback) -->
+    <div class="bg-animation"></div>
+    <div class="bg-grid"></div>
+
+    <!-- Navigation -->
+    <nav>
+        <div class="nav-container">
+            <div class="logo">
+                <span class="logo-icon">🦛</span>
+                HungryHippaahneties
+            </div>
+            <div class="nav-links">
+                <a href="#architecture">Architecture</a>
+                <a href="#security">Security</a>
+                <a href="#deployment">Deployment</a>
+                <a href="#operations">Operations</a>
+                <a href="#hipaa">HIPAA</a>
+                <a href="#troubleshooting">Troubleshooting</a>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Hero Section -->
+    <section class="hero" id="home">
+        <div class="hero-content">
+            <div class="hero-badge">
+                <span>🔒</span>
+                <span>HIPAA Compliant</span>
+                <span>•</span>
+                <span>☸️ Kubernetes</span>
+                <span>•</span>
+                <span>🛡️ OWASP Secured</span>
+            </div>
+            <h1>HungryHippaahneties</h1>
+            <p class="hero-subtitle">
+                A production-ready, HIPAA-compliant Kubernetes boilerplate stack built on OWASP security best practices.
+                Protect PHI with defense-in-depth architecture.
+            </p>
+            <div style="display: flex; gap: 1rem; justify-content: center; flex-wrap: wrap;">
+                <a href="#deployment" class="btn btn-primary">
+                    <span>🚀</span> Deploy Now
+                </a>
+                <a href="#architecture" class="btn btn-secondary">
+                    <span>📖</span> Read Docs
+                </a>
+            </div>
+            <div class="hero-stats">
+                <div class="stat">
+                    <div class="stat-value">7</div>
+                    <div class="stat-label">Services</div>
+                </div>
+                <div class="stat">
+                    <div class="stat-value">100%</div>
+                    <div class="stat-label">OWASP Coverage</div>
+                </div>
+                <div class="stat">
+                    <div class="stat-value">45+</div>
+                    <div class="stat-label">Security Controls</div>
+                </div>
+                <div class="stat">
+                    <div class="stat-value">7yr</div>
+                    <div class="stat-label">Audit Retention</div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Architecture Section -->
+    <section id="architecture">
+        <div class="section-header">
+            <div class="section-tag">// System Design</div>
+            <h2 class="section-title">Architecture Overview</h2>
+            <p class="section-desc">
+                Multi-layer defense-in-depth architecture with network segmentation following OWASP best practices.
+            </p>
+        </div>
+
+        <div class="architecture-container">
+            <div class="mermaid-container">
+                <pre class="mermaid">
+flowchart TB
+    subgraph INTERNET["🌐 INTERNET"]
+        CLIENT[/"👤 Client"/]
+    end
+
+    subgraph EDGE["🔒 EDGE LAYER"]
+        INGRESS["☸️ K8s Ingress\nTLS 1.2/1.3 • HSTS • Rate Limiting"]
+        WAF["🛡️ WAF Layer\nModSecurity + OWASP CRS\nSQL/XSS/CSRF Protection"]
+        NGINX["🔀 NGINX Proxy\nSecurity Headers • Load Balancing"]
+    end
+
+    subgraph CACHE["⚡ CACHE LAYER"]
+        REDIS[("🔴 Redis\nPort 6380\nTLS + ACL\nSession Store")]
+    end
+
+    subgraph SERVICES["🚀 APPLICATION SERVICES"]
+        FRONTEND["💻 Frontend\nPort 3000\nReact/Vue"]
+        API["⚡ API Service\nPort 8000\nNode.js"]
+        BACKEND["🐍 Backend\nPort 8080\nPython"]
+    end
+
+    subgraph DATA["💾 DATA LAYER"]
+        POSTGRES[("🐘 PostgreSQL\nPort 5432\nTLS + Encryption")]
+        LOGS["📋 Audit Logs\nFluentd\n7yr Retention"]
+    end
+
+    CLIENT --> INGRESS
+    INGRESS --> WAF
+    WAF --> NGINX
+    NGINX --> REDIS
+    REDIS --> FRONTEND
+    REDIS --> API
+    REDIS --> BACKEND
+    API --> POSTGRES
+    BACKEND --> POSTGRES
+    API --> LOGS
+    BACKEND --> LOGS
+    FRONTEND --> LOGS
+
+    classDef edge fill:#7c3aed,stroke:#a78bfa,color:#fff
+    classDef cache fill:#dc2626,stroke:#f87171,color:#fff
+    classDef service fill:#0891b2,stroke:#22d3ee,color:#fff
+    classDef data fill:#059669,stroke:#34d399,color:#fff
+    classDef internet fill:#6366f1,stroke:#a5b4fc,color:#fff
+
+    class INGRESS,WAF,NGINX edge
+    class REDIS cache
+    class FRONTEND,API,BACKEND service
+    class POSTGRES,LOGS data
+    class CLIENT internet
+                </pre>
+            </div>
+        </div>
+
+        <div class="section-divider"></div>
+
+        <h3 style="font-family: 'Orbitron', sans-serif; margin-bottom: 2rem;">Component Stack</h3>
+        <div class="card-grid">
+            <div class="card">
+                <div class="card-icon">🛡️</div>
+                <h3>WAF Layer</h3>
+                <p>ModSecurity with OWASP Core Rule Set. Paranoia Level 2 for balanced security. SQL injection, XSS, and PHI leakage detection.</p>
+            </div>
+            <div class="card">
+                <div class="card-icon">🔀</div>
+                <h3>NGINX Proxy</h3>
+                <p>Hardened reverse proxy with TLS 1.2/1.3, security headers, rate limiting, and HIPAA-compliant JSON logging.</p>
+            </div>
+            <div class="card">
+                <div class="card-icon">⚡</div>
+                <h3>API Service</h3>
+                <p>Node.js 20 with JWT authentication, browser fingerprint binding, and session management via Redis.</p>
+            </div>
+            <div class="card">
+                <div class="card-icon">🐍</div>
+                <h3>Backend Service</h3>
+                <p>Python 3.12 with FastAPI/Flask, parameterized queries, input validation, and secure database access.</p>
+            </div>
+            <div class="card">
+                <div class="card-icon">🐘</div>
+                <h3>PostgreSQL</h3>
+                <p>Encrypted storage, scram-sha-256 authentication, TLS required, row-level security, and comprehensive audit logging.</p>
+            </div>
+            <div class="card">
+                <div class="card-icon">🔴</div>
+                <h3>Redis Cache</h3>
+                <p>TLS-only connections (port 6380), ACL-based access control, dangerous commands disabled, encrypted persistence.</p>
+            </div>
+        </div>
+
+        <div class="section-divider"></div>
+
+        <h3 style="font-family: 'Orbitron', sans-serif; margin-bottom: 2rem;">Network Segmentation</h3>
+        <div class="table-container">
+            <table>
+                <thead>
+                    <tr>
+                        <th>Source</th>
+                        <th>Destination</th>
+                        <th>Ports</th>
+                        <th>Status</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td>Internet</td>
+                        <td>K8s Ingress</td>
+                        <td>443, 80</td>
+                        <td><span class="status-badge status-success">✓ ALLOW</span></td>
+                    </tr>
+                    <tr>
+                        <td>K8s Ingress</td>
+                        <td>WAF</td>
+                        <td>443</td>
+                        <td><span class="status-badge status-success">✓ ALLOW</span></td>
+                    </tr>
+                    <tr>
+                        <td>WAF</td>
+                        <td>NGINX Proxy</td>
+                        <td>443</td>
+                        <td><span class="status-badge status-success">✓ ALLOW</span></td>
+                    </tr>
+                    <tr>
+                        <td>NGINX Proxy</td>
+                        <td>Redis (Cache)</td>
+                        <td>6380</td>
+                        <td><span class="status-badge status-success">✓ ALLOW</span></td>
+                    </tr>
+                    <tr>
+                        <td>Redis (Cache)</td>
+                        <td>Frontend, API, Backend</td>
+                        <td>3000, 8000, 8080</td>
+                        <td><span class="status-badge status-success">✓ ALLOW</span></td>
+                    </tr>
+                    <tr>
+                        <td>API / Backend</td>
+                        <td>PostgreSQL</td>
+                        <td>5432</td>
+                        <td><span class="status-badge status-success">✓ ALLOW</span></td>
+                    </tr>
+                    <tr>
+                        <td>All Services</td>
+                        <td>Audit Logs (Fluentd)</td>
+                        <td>24224</td>
+                        <td><span class="status-badge status-success">✓ ALLOW</span></td>
+                    </tr>
+                    <tr>
+                        <td>PostgreSQL / Redis</td>
+                        <td>Internet</td>
+                        <td>*</td>
+                        <td><span class="status-badge" style="background: rgba(239, 68, 68, 0.2); color: #ef4444;">✗ DENY</span></td>
+                    </tr>
+                    <tr>
+                        <td>* (Default)</td>
+                        <td>*</td>
+                        <td>*</td>
+                        <td><span class="status-badge" style="background: rgba(239, 68, 68, 0.2); color: #ef4444;">✗ DENY</span></td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+    </section>
+
+    <!-- Security Section -->
+    <section id="security">
+        <div class="section-header">
+            <div class="section-tag">// Security Controls</div>
+            <h2 class="section-title">OWASP-Based Security</h2>
+            <p class="section-desc">
+                Comprehensive security implementation based on OWASP Cheat Sheet Series covering authentication,
+                cryptography, input validation, and more.
+            </p>
+        </div>
+
+        <div class="accordion">
+            <!-- OWASP Top 10 -->
+            <div class="accordion-item">
+                <div class="accordion-header" onclick="toggleAccordion(this)">
+                    <div class="accordion-title">
+                        <span class="accordion-icon">🎯</span>
+                        OWASP Top 10 Coverage
+                    </div>
+                    <span class="accordion-arrow">▼</span>
+                </div>
+                <div class="accordion-content">
+                    <div class="accordion-body">
+                        <div class="table-container">
+                            <table>
+                                <thead>
+                                    <tr>
+                                        <th>Risk</th>
+                                        <th>Control</th>
+                                        <th>Status</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <tr>
+                                        <td>A01: Broken Access Control</td>
+                                        <td>RBAC, Network Policies, JWT validation</td>
+                                        <td><span class="status-badge status-success">✓ Implemented</span></td>
+                                    </tr>
+                                    <tr>
+                                        <td>A02: Cryptographic Failures</td>
+                                        <td>TLS 1.2+, AES-256, scram-sha-256</td>
+                                        <td><span class="status-badge status-success">✓ Implemented</span></td>
+                                    </tr>
+                                    <tr>
+                                        <td>A03: Injection</td>
+                                        <td>Parameterized queries, WAF, input validation</td>
+                                        <td><span class="status-badge status-success">✓ Implemented</span></td>
+                                    </tr>
+                                    <tr>
+                                        <td>A04: Insecure Design</td>
+                                        <td>Threat modeling, security architecture</td>
+                                        <td><span class="status-badge status-success">✓ Implemented</span></td>
+                                    </tr>
+                                    <tr>
+                                        <td>A05: Security Misconfiguration</td>
+                                        <td>Hardened configs, Pod Security Standards</td>
+                                        <td><span class="status-badge status-success">✓ Implemented</span></td>
+                                    </tr>
+                                    <tr>
+                                        <td>A06: Vulnerable Components</td>
+                                        <td>Image scanning, dependency audit</td>
+                                        <td><span class="status-badge status-success">✓ Implemented</span></td>
+                                    </tr>
+                                    <tr>
+                                        <td>A07: Auth Failures</td>
+                                        <td>Strong auth, MFA, session management</td>
+                                        <td><span class="status-badge status-success">✓ Implemented</span></td>
+                                    </tr>
+                                    <tr>
+                                        <td>A08: Software/Data Integrity</td>
+                                        <td>Image signing, SBOM, secrets management</td>
+                                        <td><span class="status-badge status-success">✓ Implemented</span></td>
+                                    </tr>
+                                    <tr>
+                                        <td>A09: Logging Failures</td>
+                                        <td>HIPAA audit logging, centralized logs</td>
+                                        <td><span class="status-badge status-success">✓ Implemented</span></td>
+                                    </tr>
+                                    <tr>
+                                        <td>A10: SSRF</td>
+                                        <td>WAF rules, egress restrictions</td>
+                                        <td><span class="status-badge status-success">✓ Implemented</span></td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Authentication -->
+            <div class="accordion-item">
+                <div class="accordion-header" onclick="toggleAccordion(this)">
+                    <div class="accordion-title">
+                        <span class="accordion-icon">🔐</span>
+                        Authentication & Session Management
+                    </div>
+                    <span class="accordion-arrow">▼</span>
+                </div>
+                <div class="accordion-content">
+                    <div class="accordion-body">
+                        <h4 style="color: var(--primary-purple); margin-bottom: 1rem;">Password Requirements</h4>
+                        <div class="feature-list">
+                            <div class="feature-item">
+                                <span class="feature-icon">✓</span>
+                                <span>Minimum 15 characters (8 with MFA)</span>
+                            </div>
+                            <div class="feature-item">
+                                <span class="feature-icon">✓</span>
+                                <span>Breach detection via HaveIBeenPwned</span>
+                            </div>
+                            <div class="feature-item">
+                                <span class="feature-icon">✓</span>
+                                <span>Argon2id password hashing</span>
+                            </div>
+                            <div class="feature-item">
+                                <span class="feature-icon">✓</span>
+                                <span>No periodic rotation (NIST 800-63B)</span>
+                            </div>
+                        </div>
+
+                        <h4 style="color: var(--primary-purple); margin: 2rem 0 1rem;">JWT Security</h4>
+                        <div class="code-block">
+                            <div class="code-header">
+                                <span class="code-dot red"></span>
+                                <span class="code-dot yellow"></span>
+                                <span class="code-dot green"></span>
+                                <span class="code-title">jwt-fingerprint.js</span>
+                            </div>
+                            <pre><code>// JWT with browser fingerprint binding (anti-sidejacking)
+const fingerprint = crypto.randomBytes(32).toString('hex');
+const fingerprintHash = crypto.createHash('sha256')
+  .update(fingerprint).digest('hex');
+
+const token = jwt.sign({
+  sub: userId,
+  exp: Math.floor(Date.now() / 1000) + 900, // 15 minutes
+  fgp: fingerprintHash  // Fingerprint hash in token
+}, privateKey, { algorithm: 'RS256' });
+
+// Send fingerprint as hardened cookie
+res.cookie('__Secure-Fgp', fingerprint, {
+  httpOnly: true,
+  secure: true,
+  sameSite: 'Strict'
+});</code></pre>
+                        </div>
+
+                        <h4 style="color: var(--primary-purple); margin: 2rem 0 1rem;">Session Configuration</h4>
+                        <div class="feature-list">
+                            <div class="feature-item">
+                                <span class="feature-icon">⏱️</span>
+                                <span>Idle timeout: 15 minutes</span>
+                            </div>
+                            <div class="feature-item">
+                                <span class="feature-icon">🔄</span>
+                                <span>Absolute timeout: 8 hours</span>
+                            </div>
+                            <div class="feature-item">
+                                <span class="feature-icon">🍪</span>
+                                <span>Secure, HttpOnly, SameSite=Strict</span>
+                            </div>
+                            <div class="feature-item">
+                                <span class="feature-icon">🔑</span>
+                                <span>Redis-backed session storage</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Encryption -->
+            <div class="accordion-item">
+                <div class="accordion-header" onclick="toggleAccordion(this)">
+                    <div class="accordion-title">
+                        <span class="accordion-icon">🔒</span>
+                        Encryption & TLS
+                    </div>
+                    <span class="accordion-arrow">▼</span>
+                </div>
+                <div class="accordion-content">
+                    <div class="accordion-body">
+                        <div class="card-grid" style="grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));">
+                            <div class="card" style="background: rgba(139, 92, 246, 0.1);">
+                                <h4 style="color: var(--primary-cyan); margin-bottom: 1rem;">🌐 In Transit</h4>
+                                <ul class="checklist">
+                                    <li><span class="checklist-icon">✓</span> TLS 1.2 minimum, TLS 1.3 preferred</li>
+                                    <li><span class="checklist-icon">✓</span> ECDHE-AES256-GCM-SHA384 ciphers</li>
+                                    <li><span class="checklist-icon">✓</span> HSTS with 1-year max-age + preload</li>
+                                    <li><span class="checklist-icon">✓</span> mTLS between internal services</li>
+                                </ul>
+                            </div>
+                            <div class="card" style="background: rgba(236, 72, 153, 0.1);">
+                                <h4 style="color: var(--primary-pink); margin-bottom: 1rem;">💾 At Rest</h4>
+                                <ul class="checklist">
+                                    <li><span class="checklist-icon">✓</span> AES-256-GCM encryption</li>
+                                    <li><span class="checklist-icon">✓</span> Encrypted PVCs for all data</li>
+                                    <li><span class="checklist-icon">✓</span> etcd encryption for K8s secrets</li>
+                                    <li><span class="checklist-icon">✓</span> GPG-encrypted backups</li>
+                                </ul>
+                            </div>
+                        </div>
+
+                        <div class="code-block" style="margin-top: 2rem;">
+                            <div class="code-header">
+                                <span class="code-dot red"></span>
+                                <span class="code-dot yellow"></span>
+                                <span class="code-dot green"></span>
+                                <span class="code-title">nginx-tls.conf</span>
+                            </div>
+                            <pre><code>ssl_protocols TLSv1.2 TLSv1.3;
+ssl_prefer_server_ciphers on;
+ssl_ciphers 'ECDHE-ECDSA-AES256-GCM-SHA384:ECDHE-RSA-AES256-GCM-SHA384:ECDHE-ECDSA-CHACHA20-POLY1305';
+ssl_ecdh_curve X25519:secp384r1;
+ssl_session_timeout 1d;
+ssl_session_cache shared:SSL:50m;
+ssl_session_tickets off;
+ssl_stapling on;
+ssl_stapling_verify on;</code></pre>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Container Security -->
+            <div class="accordion-item">
+                <div class="accordion-header" onclick="toggleAccordion(this)">
+                    <div class="accordion-title">
+                        <span class="accordion-icon">📦</span>
+                        Container & Kubernetes Security
+                    </div>
+                    <span class="accordion-arrow">▼</span>
+                </div>
+                <div class="accordion-content">
+                    <div class="accordion-body">
+                        <h4 style="color: var(--primary-purple); margin-bottom: 1rem;">Pod Security Standards (Restricted)</h4>
+                        <div class="code-block">
+                            <div class="code-header">
+                                <span class="code-dot red"></span>
+                                <span class="code-dot yellow"></span>
+                                <span class="code-dot green"></span>
+                                <span class="code-title">security-context.yaml</span>
+                            </div>
+                            <pre><code>spec:
+  securityContext:
+    runAsNonRoot: true
+    runAsUser: 10001
+    runAsGroup: 10001
+    fsGroup: 10001
+    seccompProfile:
+      type: RuntimeDefault
+  containers:
+    - name: app
+      securityContext:
+        allowPrivilegeEscalation: false
+        readOnlyRootFilesystem: true
+        capabilities:
+          drop:
+            - ALL</code></pre>
+                        </div>
+
+                        <h4 style="color: var(--primary-purple); margin: 2rem 0 1rem;">Container Hardening Checklist</h4>
+                        <div class="feature-list">
+                            <div class="feature-item">
+                                <span class="feature-icon">✓</span>
+                                <span>Non-root user (UID 10001+)</span>
+                            </div>
+                            <div class="feature-item">
+                                <span class="feature-icon">✓</span>
+                                <span>Read-only root filesystem</span>
+                            </div>
+                            <div class="feature-item">
+                                <span class="feature-icon">✓</span>
+                                <span>No privilege escalation</span>
+                            </div>
+                            <div class="feature-item">
+                                <span class="feature-icon">✓</span>
+                                <span>All capabilities dropped</span>
+                            </div>
+                            <div class="feature-item">
+                                <span class="feature-icon">✓</span>
+                                <span>Seccomp RuntimeDefault</span>
+                            </div>
+                            <div class="feature-item">
+                                <span class="feature-icon">✓</span>
+                                <span>Resource limits defined</span>
+                            </div>
+                            <div class="feature-item">
+                                <span class="feature-icon">✓</span>
+                                <span>Image vulnerability scanning</span>
+                            </div>
+                            <div class="feature-item">
+                                <span class="feature-icon">✓</span>
+                                <span>No secrets in images</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- WAF Rules -->
+            <div class="accordion-item">
+                <div class="accordion-header" onclick="toggleAccordion(this)">
+                    <div class="accordion-title">
+                        <span class="accordion-icon">🔥</span>
+                        WAF & Input Validation
+                    </div>
+                    <span class="accordion-arrow">▼</span>
+                </div>
+                <div class="accordion-content">
+                    <div class="accordion-body">
+                        <div class="alert alert-info">
+                            <span class="alert-icon">ℹ️</span>
+                            <div>ModSecurity with OWASP Core Rule Set protects against OWASP Top 10 attacks. Paranoia Level 2 provides balanced security with minimal false positives.</div>
+                        </div>
+
+                        <div class="code-block">
+                            <div class="code-header">
+                                <span class="code-dot red"></span>
+                                <span class="code-dot yellow"></span>
+                                <span class="code-dot green"></span>
+                                <span class="code-title">modsecurity-hipaa.conf</span>
+                            </div>
+                            <pre><code># SQL Injection Prevention
+SecRule ARGS|REQUEST_COOKIES "@detectSQLi" \
+    "id:942100, phase:2, block,
+    msg:'SQL Injection Attack Detected',
+    severity:'CRITICAL', tag:'OWASP_CRS'"
+
+# XSS Prevention
+SecRule ARGS|REQUEST_HEADERS "@detectXSS" \
+    "id:941100, phase:2, block,
+    msg:'XSS Attack Detected',
+    severity:'CRITICAL'"
+
+# HIPAA: PHI Leakage Detection
+SecRule RESPONSE_BODY "@rx \d{3}-\d{2}-\d{4}" \
+    "id:950001, phase:4, block,
+    msg:'Potential SSN Leakage',
+    tag:'HIPAA', severity:'CRITICAL'"</code></pre>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Deployment Section -->
+    <section id="deployment">
+        <div class="section-header">
+            <div class="section-tag">// Installation</div>
+            <h2 class="section-title">Deployment Guide</h2>
+            <p class="section-desc">
+                Deploy HungryHippaahneties to your Kubernetes cluster in minutes.
+            </p>
+        </div>
+
+        <div class="alert alert-warning">
+            <span class="alert-icon">⚠️</span>
+            <div>
+                <strong>Prerequisites Required:</strong> Kubernetes 1.25+, kubectl, NGINX Ingress Controller, cert-manager,
+                and a CNI with NetworkPolicy support (Calico, Cilium).
+            </div>
+        </div>
+
+        <h3 style="font-family: 'Orbitron', sans-serif; margin: 2rem 0 1.5rem;">Quick Start</h3>
+        <div class="code-block">
+            <div class="code-header">
+                <span class="code-dot red"></span>
+                <span class="code-dot yellow"></span>
+                <span class="code-dot green"></span>
+                <span class="code-title">terminal</span>
+            </div>
+            <pre><code># Clone repository
+git clone https://github.com/example/hungryhippaahneties.git
+cd hungryhippaahneties
+
+# Option 1: Deploy using script (recommended)
+chmod +x scripts/deploy.sh
+./scripts/deploy.sh production
+
+# Option 2: Deploy using kustomize
+kubectl apply -k k8s/base/
+
+# Option 3: Deploy using Helm
+helm install hungryhippaahneties ./helm/hungryhippaahneties \
+  --namespace hungryhippaahneties \
+  --create-namespace
+
+# Verify deployment
+kubectl get pods -n hungryhippaahneties</code></pre>
+        </div>
+
+        <h3 style="font-family: 'Orbitron', sans-serif; margin: 3rem 0 1.5rem;">Step-by-Step Installation</h3>
+        <div class="timeline">
+            <div class="timeline-item">
+                <div class="timeline-dot"></div>
+                <div class="timeline-title">1. Create Namespace with Pod Security Standards</div>
+                <div class="timeline-content">
+                    <div class="code-block">
+                        <pre><code>kubectl apply -f k8s/base/namespace.yaml
+kubectl get namespace hungryhippaahneties --show-labels</code></pre>
+                    </div>
+                </div>
+            </div>
+            <div class="timeline-item">
+                <div class="timeline-dot"></div>
+                <div class="timeline-title">2. Configure Secrets (External Secrets Manager Recommended)</div>
+                <div class="timeline-content">
+                    <div class="code-block">
+                        <pre><code># Generate secure passwords
+DB_PASSWORD=$(openssl rand -base64 32)
+REDIS_PASSWORD=$(openssl rand -base64 32)
+
+# Create secrets
+kubectl create secret generic db-credentials \
+  --namespace hungryhippaahneties \
+  --from-literal=POSTGRES_PASSWORD=$DB_PASSWORD</code></pre>
+                    </div>
+                </div>
+            </div>
+            <div class="timeline-item">
+                <div class="timeline-dot"></div>
+                <div class="timeline-title">3. Configure TLS Certificates</div>
+                <div class="timeline-content">
+                    <div class="code-block">
+                        <pre><code># Using cert-manager with Let's Encrypt
+kubectl apply -f - <<EOF
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  name: hungryhippaahneties-tls
+  namespace: hungryhippaahneties
+spec:
+  secretName: tls-certificates
+  issuerRef:
+    name: letsencrypt-prod
+    kind: ClusterIssuer
+  dnsNames:
+    - hungryhippaahneties.example.com
+EOF</code></pre>
+                    </div>
+                </div>
+            </div>
+            <div class="timeline-item">
+                <div class="timeline-dot"></div>
+                <div class="timeline-title">4. Deploy All Resources</div>
+                <div class="timeline-content">
+                    <div class="code-block">
+                        <pre><code>kubectl apply -f k8s/base/rbac.yaml
+kubectl apply -f k8s/base/network-policies.yaml
+kubectl apply -f k8s/base/configmaps.yaml
+kubectl apply -f k8s/base/services.yaml
+kubectl apply -f k8s/base/deployments.yaml
+kubectl apply -f k8s/base/ingress.yaml</code></pre>
+                    </div>
+                </div>
+            </div>
+            <div class="timeline-item">
+                <div class="timeline-dot"></div>
+                <div class="timeline-title">5. Verify Deployment</div>
+                <div class="timeline-content">
+                    <div class="code-block">
+                        <pre><code>kubectl get pods -n hungryhippaahneties
+kubectl get svc -n hungryhippaahneties
+kubectl get ingress -n hungryhippaahneties
+
+# Test health endpoint
+curl https://hungryhippaahneties.example.com/health</code></pre>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Operations Section -->
+    <section id="operations">
+        <div class="section-header">
+            <div class="section-tag">// Day-2 Operations</div>
+            <h2 class="section-title">Operations Runbook</h2>
+            <p class="section-desc">
+                Monitoring, backup, scaling, and incident response procedures.
+            </p>
+        </div>
+
+        <div class="card-grid">
+            <div class="card">
+                <div class="card-icon">📊</div>
+                <h3>Monitoring</h3>
+                <p>Prometheus metrics, Grafana dashboards, and alerting for CPU, memory, error rates, and authentication failures.</p>
+                <div class="code-block" style="margin-top: 1rem;">
+                    <pre><code># Key metrics to monitor
+cpu_usage > 80%     → Scale
+memory_usage > 85%  → Investigate
+error_rate > 1%     → Alert
+auth_failures > 10/min → Security</code></pre>
+                </div>
+            </div>
+            <div class="card">
+                <div class="card-icon">💾</div>
+                <h3>Backups</h3>
+                <p>Automated PostgreSQL and Redis backups every 6 hours with 7-year HIPAA retention and GPG encryption.</p>
+                <div class="code-block" style="margin-top: 1rem;">
+                    <pre><code># Backup schedule
+PostgreSQL: Every 6 hours
+Redis:      Every 6 hours
+Retention:  7 years (HIPAA)
+Encryption: GPG + AES-256</code></pre>
+                </div>
+            </div>
+            <div class="card">
+                <div class="card-icon">📈</div>
+                <h3>Scaling</h3>
+                <p>Horizontal Pod Autoscaler (HPA) for API and backend services. Scale based on CPU and memory utilization.</p>
+                <div class="code-block" style="margin-top: 1rem;">
+                    <pre><code># Scale manually
+kubectl scale deployment/api \
+  --replicas=5 \
+  -n hungryhippaahneties</code></pre>
+                </div>
+            </div>
+            <div class="card">
+                <div class="card-icon">🚨</div>
+                <h3>Incident Response</h3>
+                <p>P1-P4 severity levels with defined response times. Emergency procedures for data breaches and service outages.</p>
+                <div class="code-block" style="margin-top: 1rem;">
+                    <pre><code>P1 Critical: 15 min response
+P2 High:     1 hour response
+P3 Medium:   4 hour response
+P4 Low:      24 hour response</code></pre>
+                </div>
+            </div>
+        </div>
+
+        <div class="section-divider"></div>
+
+        <h3 style="font-family: 'Orbitron', sans-serif; margin-bottom: 1.5rem;">🚨 Emergency: Data Breach Response</h3>
+        <div class="alert alert-danger">
+            <span class="alert-icon">🔴</span>
+            <div>
+                <strong>CRITICAL:</strong> In case of suspected data breach, execute the following immediately.
+                Do NOT delete any logs or data. HIPAA requires breach notification within 60 days.
+            </div>
+        </div>
+        <div class="code-block">
+            <div class="code-header">
+                <span class="code-dot red"></span>
+                <span class="code-dot yellow"></span>
+                <span class="code-dot green"></span>
+                <span class="code-title">emergency-breach-response.sh</span>
+            </div>
+            <pre><code>#!/bin/bash
+# EMERGENCY: Data breach response
+
+echo "!!! DATA BREACH RESPONSE INITIATED !!!"
+NAMESPACE="hungryhippaahneties"
+
+# 1. Preserve evidence (do NOT delete anything)
+kubectl logs -l app=api -n $NAMESPACE --all-containers > evidence_$(date +%s).log
+
+# 2. Isolate network
+kubectl apply -f - <<EOF
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: emergency-isolate
+  namespace: $NAMESPACE
+spec:
+  podSelector: {}
+  policyTypes: [Ingress, Egress]
+EOF
+
+# 3. NOTIFY SECURITY TEAM IMMEDIATELY
+echo "Contact: security@example.com"
+echo "HIPAA: Document for 60-day notification requirement"</code></pre>
+        </div>
+    </section>
+
+    <!-- HIPAA Section -->
+    <section id="hipaa">
+        <div class="section-header">
+            <div class="section-tag">// Compliance</div>
+            <h2 class="section-title">HIPAA Compliance</h2>
+            <p class="section-desc">
+                Complete mapping to HIPAA Security Rule (45 CFR Part 164) requirements.
+            </p>
+        </div>
+
+        <div class="card-grid" style="grid-template-columns: repeat(3, 1fr);">
+            <div class="card" style="text-align: center;">
+                <div style="font-size: 3rem; margin-bottom: 1rem;">⚙️</div>
+                <h3>Technical Safeguards</h3>
+                <p>§164.312</p>
+                <div style="margin-top: 1rem; font-size: 2rem; color: var(--primary-cyan);">100%</div>
+                <small style="color: var(--text-secondary);">Implemented</small>
+            </div>
+            <div class="card" style="text-align: center;">
+                <div style="font-size: 3rem; margin-bottom: 1rem;">📋</div>
+                <h3>Administrative Safeguards</h3>
+                <p>§164.308</p>
+                <div style="margin-top: 1rem; font-size: 2rem; color: #22c55e;">90%</div>
+                <small style="color: var(--text-secondary);">+ Policies Required</small>
+            </div>
+            <div class="card" style="text-align: center;">
+                <div style="font-size: 3rem; margin-bottom: 1rem;">🏢</div>
+                <h3>Physical Safeguards</h3>
+                <p>§164.310</p>
+                <div style="margin-top: 1rem; font-size: 2rem; color: #22c55e;">100%</div>
+                <small style="color: var(--text-secondary);">Via Cloud + K8s</small>
+            </div>
+        </div>
+
+        <div class="accordion" style="margin-top: 3rem;">
+            <div class="accordion-item active">
+                <div class="accordion-header" onclick="toggleAccordion(this)">
+                    <div class="accordion-title">
+                        <span class="accordion-icon">⚙️</span>
+                        Technical Safeguards - §164.312
+                    </div>
+                    <span class="accordion-arrow">▼</span>
+                </div>
+                <div class="accordion-content">
+                    <div class="accordion-body">
+                        <div class="table-container">
+                            <table>
+                                <thead>
+                                    <tr>
+                                        <th>Requirement</th>
+                                        <th>Section</th>
+                                        <th>Implementation</th>
+                                        <th>Status</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <tr>
+                                        <td>Unique User Identification</td>
+                                        <td>§164.312(a)(2)(i)</td>
+                                        <td>Unique service accounts, JWT with 'sub' claim</td>
+                                        <td><span class="status-badge status-success">✓</span></td>
+                                    </tr>
+                                    <tr>
+                                        <td>Emergency Access Procedure</td>
+                                        <td>§164.312(a)(2)(ii)</td>
+                                        <td>Break-glass admin account in Vault</td>
+                                        <td><span class="status-badge status-success">✓</span></td>
+                                    </tr>
+                                    <tr>
+                                        <td>Automatic Logoff</td>
+                                        <td>§164.312(a)(2)(iii)</td>
+                                        <td>15-minute session timeout</td>
+                                        <td><span class="status-badge status-success">✓</span></td>
+                                    </tr>
+                                    <tr>
+                                        <td>Encryption/Decryption</td>
+                                        <td>§164.312(a)(2)(iv)</td>
+                                        <td>AES-256 at rest, TLS 1.2+ in transit</td>
+                                        <td><span class="status-badge status-success">✓</span></td>
+                                    </tr>
+                                    <tr>
+                                        <td>Audit Controls</td>
+                                        <td>§164.312(b)</td>
+                                        <td>HIPAA audit logging, 7-year retention</td>
+                                        <td><span class="status-badge status-success">✓</span></td>
+                                    </tr>
+                                    <tr>
+                                        <td>Integrity Controls</td>
+                                        <td>§164.312(c)(1)</td>
+                                        <td>Checksums, signatures, immutable logs</td>
+                                        <td><span class="status-badge status-success">✓</span></td>
+                                    </tr>
+                                    <tr>
+                                        <td>Person/Entity Authentication</td>
+                                        <td>§164.312(d)</td>
+                                        <td>MFA, JWT with fingerprint, mTLS</td>
+                                        <td><span class="status-badge status-success">✓</span></td>
+                                    </tr>
+                                    <tr>
+                                        <td>Transmission Security</td>
+                                        <td>§164.312(e)(1)</td>
+                                        <td>TLS everywhere, HSTS, encrypted DB</td>
+                                        <td><span class="status-badge status-success">✓</span></td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="accordion-item">
+                <div class="accordion-header" onclick="toggleAccordion(this)">
+                    <div class="accordion-title">
+                        <span class="accordion-icon">📝</span>
+                        Pre-Production Compliance Checklist
+                    </div>
+                    <span class="accordion-arrow">▼</span>
+                </div>
+                <div class="accordion-content">
+                    <div class="accordion-body">
+                        <h4 style="color: var(--primary-purple); margin-bottom: 1rem;">Technical Controls</h4>
+                        <ul class="checklist">
+                            <li><span class="checklist-icon">☐</span> TLS 1.2+ enforced on all connections</li>
+                            <li><span class="checklist-icon">☐</span> All data encrypted at rest (AES-256)</li>
+                            <li><span class="checklist-icon">☐</span> MFA enabled for administrative access</li>
+                            <li><span class="checklist-icon">☐</span> Audit logging enabled and tested</li>
+                            <li><span class="checklist-icon">☐</span> Log retention set to 7 years</li>
+                            <li><span class="checklist-icon">☐</span> Backup procedures tested</li>
+                            <li><span class="checklist-icon">☐</span> Disaster recovery plan tested</li>
+                            <li><span class="checklist-icon">☐</span> Penetration test completed</li>
+                        </ul>
+
+                        <h4 style="color: var(--primary-purple); margin: 2rem 0 1rem;">Administrative Controls</h4>
+                        <ul class="checklist">
+                            <li><span class="checklist-icon">☐</span> Security policies documented</li>
+                            <li><span class="checklist-icon">☐</span> Risk assessment completed</li>
+                            <li><span class="checklist-icon">☐</span> Incident response plan documented</li>
+                            <li><span class="checklist-icon">☐</span> Workforce training completed</li>
+                            <li><span class="checklist-icon">☐</span> Background checks completed</li>
+                        </ul>
+
+                        <h4 style="color: var(--primary-purple); margin: 2rem 0 1rem;">Organizational Controls</h4>
+                        <ul class="checklist">
+                            <li><span class="checklist-icon">☐</span> Cloud provider BAA signed</li>
+                            <li><span class="checklist-icon">☐</span> All vendor BAAs signed</li>
+                            <li><span class="checklist-icon">☐</span> Breach notification procedures documented</li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Troubleshooting Section -->
+    <section id="troubleshooting">
+        <div class="section-header">
+            <div class="section-tag">// Debug</div>
+            <h2 class="section-title">Troubleshooting</h2>
+            <p class="section-desc">
+                Common issues and solutions for HungryHippaahneties deployment.
+            </p>
+        </div>
+
+        <div class="accordion">
+            <div class="accordion-item">
+                <div class="accordion-header" onclick="toggleAccordion(this)">
+                    <div class="accordion-title">
+                        <span class="accordion-icon">🔄</span>
+                        Pods Stuck in CrashLoopBackOff
+                    </div>
+                    <span class="accordion-arrow">▼</span>
+                </div>
+                <div class="accordion-content">
+                    <div class="accordion-body">
+                        <p><strong>Common Causes:</strong></p>
+                        <ul class="checklist">
+                            <li><span class="checklist-icon">•</span> Missing environment variables</li>
+                            <li><span class="checklist-icon">•</span> Database connection failure</li>
+                            <li><span class="checklist-icon">•</span> Liveness probe failure</li>
+                            <li><span class="checklist-icon">•</span> Resource limits too low (OOMKilled)</li>
+                        </ul>
+                        <div class="code-block">
+                            <pre><code># Check logs
+kubectl logs <pod-name> -n hungryhippaahneties --previous
+
+# Check events
+kubectl describe pod <pod-name> -n hungryhippaahneties
+
+# Check for OOM
+kubectl describe pod <pod-name> | grep -i "oom"</code></pre>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="accordion-item">
+                <div class="accordion-header" onclick="toggleAccordion(this)">
+                    <div class="accordion-title">
+                        <span class="accordion-icon">🌐</span>
+                        Network Policy Blocking Traffic
+                    </div>
+                    <span class="accordion-arrow">▼</span>
+                </div>
+                <div class="accordion-content">
+                    <div class="accordion-body">
+                        <p><strong>Symptoms:</strong> Services can't communicate, connection timeouts.</p>
+                        <div class="code-block">
+                            <pre><code># Check network policies
+kubectl get networkpolicies -n hungryhippaahneties -o yaml
+
+# Verify pod labels match policy selectors
+kubectl get pods -n hungryhippaahneties --show-labels
+
+# Test connectivity
+kubectl run test --rm -it --image=busybox -n hungryhippaahneties \
+  -- wget -qO- --timeout=5 http://api-service:8000/health</code></pre>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="accordion-item">
+                <div class="accordion-header" onclick="toggleAccordion(this)">
+                    <div class="accordion-title">
+                        <span class="accordion-icon">🐘</span>
+                        Cannot Connect to PostgreSQL
+                    </div>
+                    <span class="accordion-arrow">▼</span>
+                </div>
+                <div class="accordion-content">
+                    <div class="accordion-body">
+                        <div class="code-block">
+                            <pre><code># Check PostgreSQL pod
+kubectl get pods -l app=postgresql -n hungryhippaahneties
+
+# Check service and endpoints
+kubectl get svc postgresql-service -n hungryhippaahneties
+kubectl get endpoints postgresql-service -n hungryhippaahneties
+
+# Check logs
+kubectl logs -l app=postgresql -n hungryhippaahneties
+
+# Test connection
+kubectl run pg-test --rm -it --image=postgres:16-alpine \
+  -n hungryhippaahneties -- psql -h postgresql-service \
+  -U hipaa_app_user -d hungryhippaahneties_db -c "SELECT 1;"</code></pre>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="accordion-item">
+                <div class="accordion-header" onclick="toggleAccordion(this)">
+                    <div class="accordion-title">
+                        <span class="accordion-icon">🔐</span>
+                        TLS/Certificate Errors
+                    </div>
+                    <span class="accordion-arrow">▼</span>
+                </div>
+                <div class="accordion-content">
+                    <div class="accordion-body">
+                        <div class="code-block">
+                            <pre><code># Check certificate status
+kubectl get certificate -n hungryhippaahneties
+kubectl describe certificate hungryhippaahneties-tls -n hungryhippaahneties
+
+# Check secret contains certificate
+kubectl get secret tls-certificates -n hungryhippaahneties -o yaml
+
+# Check certificate expiry
+kubectl get secret tls-certificates -n hungryhippaahneties \
+  -o jsonpath='{.data.tls\.crt}' | base64 -d | \
+  openssl x509 -enddate -noout
+
+# Force renewal
+kubectl delete certificate hungryhippaahneties-tls -n hungryhippaahneties
+kubectl apply -f certificate.yaml</code></pre>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="accordion-item">
+                <div class="accordion-header" onclick="toggleAccordion(this)">
+                    <div class="accordion-title">
+                        <span class="accordion-icon">🛡️</span>
+                        WAF Blocking Legitimate Traffic
+                    </div>
+                    <span class="accordion-arrow">▼</span>
+                </div>
+                <div class="accordion-content">
+                    <div class="accordion-body">
+                        <div class="code-block">
+                            <pre><code># Check WAF logs for blocked requests
+kubectl logs -l app=modsecurity-waf -n hungryhippaahneties | grep -i "blocked"
+
+# Identify rule ID that triggered
+# Look for entries like: [id "942100"]
+
+# Add exception for false positive (update modsecurity.conf)
+SecRuleRemoveById 942100
+
+# Or lower paranoia level temporarily
+kubectl set env deployment/modsecurity-waf PARANOIA=1 \
+  -n hungryhippaahneties</code></pre>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="section-divider"></div>
+
+        <h3 style="font-family: 'Orbitron', sans-serif; margin-bottom: 1.5rem;">Quick Diagnostic Script</h3>
+        <div class="code-block">
+            <div class="code-header">
+                <span class="code-dot red"></span>
+                <span class="code-dot yellow"></span>
+                <span class="code-dot green"></span>
+                <span class="code-title">health-check.sh</span>
+            </div>
+            <pre><code>#!/bin/bash
+NAMESPACE="hungryhippaahneties"
+
+echo "=== HungryHippaahneties Health Check ==="
+echo "Date: $(date -u)"
+echo ""
+
+echo "=== Pod Status ==="
+kubectl get pods -n $NAMESPACE -o wide
+echo ""
+
+echo "=== Resource Usage ==="
+kubectl top pods -n $NAMESPACE
+echo ""
+
+echo "=== Recent Events ==="
+kubectl get events -n $NAMESPACE --sort-by='.lastTimestamp' | tail -10
+echo ""
+
+echo "=== Certificate Status ==="
+kubectl get certificates -n $NAMESPACE
+echo ""
+
+echo "=== Network Policies ==="
+kubectl get networkpolicies -n $NAMESPACE | wc -l
+echo " network policies configured"</code></pre>
+        </div>
+    </section>
+
+    <!-- Footer -->
+    <footer>
+        <div class="footer-logo">🦛 HungryHippaahneties</div>
+        <p class="footer-text">
+            HIPAA-Compliant Kubernetes Stack • Built on OWASP Best Practices<br>
+            <a href="https://github.com/example/hungryhippaahneties" style="color: var(--primary-purple);">GitHub</a> •
+            <a href="mailto:security@example.com" style="color: var(--primary-purple);">Security Contact</a>
+        </p>
+        <p class="footer-text" style="margin-top: 1rem; opacity: 0.5;">
+            © 2025 HungryHippaahneties. All rights reserved.
+        </p>
+    </footer>
+
+    <!-- Scroll to top -->
+    <button class="scroll-top" id="scrollTop" onclick="scrollToTop()">↑</button>
+
+    <script>
+        // Initialize Mermaid
+        mermaid.initialize({
+            startOnLoad: true,
+            theme: 'dark',
+            themeVariables: {
+                primaryColor: '#8B5CF6',
+                primaryTextColor: '#fff',
+                primaryBorderColor: '#a78bfa',
+                lineColor: '#8B5CF6',
+                secondaryColor: '#EC4899',
+                tertiaryColor: '#0a0a0f',
+                background: '#0a0a0f',
+                mainBkg: '#1a1a2e',
+                nodeBorder: '#8B5CF6',
+                clusterBkg: 'rgba(139, 92, 246, 0.1)',
+                clusterBorder: '#8B5CF6',
+                titleColor: '#f0f0f5',
+                edgeLabelBackground: '#0a0a0f',
+                nodeTextColor: '#fff'
+            },
+            flowchart: {
+                curve: 'basis',
+                padding: 20,
+                nodeSpacing: 50,
+                rankSpacing: 80,
+                htmlLabels: true
+            },
+            securityLevel: 'loose'
+        });
+
+        // Accordion functionality
+        function toggleAccordion(header) {
+            const item = header.parentElement;
+            const isActive = item.classList.contains('active');
+
+            // Close all other accordions
+            document.querySelectorAll('.accordion-item').forEach(i => {
+                i.classList.remove('active');
+            });
+
+            // Toggle current
+            if (!isActive) {
+                item.classList.add('active');
+            }
+        }
+
+        // Scroll to top button
+        window.addEventListener('scroll', function() {
+            const scrollTop = document.getElementById('scrollTop');
+            if (window.pageYOffset > 500) {
+                scrollTop.classList.add('visible');
+            } else {
+                scrollTop.classList.remove('visible');
+            }
+        });
+
+        function scrollToTop() {
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+        }
+
+        // Smooth scroll for nav links
+        document.querySelectorAll('a[href^="#"]').forEach(anchor => {
+            anchor.addEventListener('click', function(e) {
+                e.preventDefault();
+                const target = document.querySelector(this.getAttribute('href'));
+                if (target) {
+                    target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                }
+            });
+        });
+
+        // Node Mesh Animation
+        (function() {
+            const canvas = document.getElementById('nodeMesh');
+            const ctx = canvas.getContext('2d');
+            let nodes = [];
+            let animationId;
+            const nodeCount = 60;
+            const connectionDistance = 150;
+            const mouseRadius = 200;
+            let mouse = { x: null, y: null };
+
+            function resize() {
+                canvas.width = window.innerWidth;
+                canvas.height = window.innerHeight;
+            }
+
+            function createNodes() {
+                nodes = [];
+                for (let i = 0; i < nodeCount; i++) {
+                    nodes.push({
+                        x: Math.random() * canvas.width,
+                        y: Math.random() * canvas.height,
+                        vx: (Math.random() - 0.5) * 0.5,
+                        vy: (Math.random() - 0.5) * 0.5,
+                        radius: Math.random() * 2 + 1
+                    });
+                }
+            }
+
+            function drawNodes() {
+                ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+                // Draw connections
+                for (let i = 0; i < nodes.length; i++) {
+                    for (let j = i + 1; j < nodes.length; j++) {
+                        const dx = nodes[i].x - nodes[j].x;
+                        const dy = nodes[i].y - nodes[j].y;
+                        const distance = Math.sqrt(dx * dx + dy * dy);
+
+                        if (distance < connectionDistance) {
+                            const opacity = (1 - distance / connectionDistance) * 0.5;
+                            ctx.beginPath();
+                            ctx.strokeStyle = `rgba(139, 92, 246, ${opacity})`;
+                            ctx.lineWidth = 0.5;
+                            ctx.moveTo(nodes[i].x, nodes[i].y);
+                            ctx.lineTo(nodes[j].x, nodes[j].y);
+                            ctx.stroke();
+                        }
+                    }
+
+                    // Mouse connection
+                    if (mouse.x && mouse.y) {
+                        const dx = nodes[i].x - mouse.x;
+                        const dy = nodes[i].y - mouse.y;
+                        const distance = Math.sqrt(dx * dx + dy * dy);
+
+                        if (distance < mouseRadius) {
+                            const opacity = (1 - distance / mouseRadius) * 0.8;
+                            ctx.beginPath();
+                            ctx.strokeStyle = `rgba(236, 72, 153, ${opacity})`;
+                            ctx.lineWidth = 1;
+                            ctx.moveTo(nodes[i].x, nodes[i].y);
+                            ctx.lineTo(mouse.x, mouse.y);
+                            ctx.stroke();
+                        }
+                    }
+                }
+
+                // Draw nodes
+                nodes.forEach(node => {
+                    ctx.beginPath();
+                    ctx.arc(node.x, node.y, node.radius, 0, Math.PI * 2);
+                    ctx.fillStyle = 'rgba(139, 92, 246, 0.8)';
+                    ctx.fill();
+
+                    // Glow effect
+                    ctx.beginPath();
+                    ctx.arc(node.x, node.y, node.radius + 2, 0, Math.PI * 2);
+                    ctx.fillStyle = 'rgba(139, 92, 246, 0.2)';
+                    ctx.fill();
+                });
+            }
+
+            function updateNodes() {
+                nodes.forEach(node => {
+                    node.x += node.vx;
+                    node.y += node.vy;
+
+                    // Bounce off edges
+                    if (node.x < 0 || node.x > canvas.width) node.vx *= -1;
+                    if (node.y < 0 || node.y > canvas.height) node.vy *= -1;
+
+                    // Mouse repulsion
+                    if (mouse.x && mouse.y) {
+                        const dx = node.x - mouse.x;
+                        const dy = node.y - mouse.y;
+                        const distance = Math.sqrt(dx * dx + dy * dy);
+                        if (distance < 100) {
+                            node.x += dx * 0.02;
+                            node.y += dy * 0.02;
+                        }
+                    }
+                });
+            }
+
+            function animate() {
+                updateNodes();
+                drawNodes();
+                animationId = requestAnimationFrame(animate);
+            }
+
+            window.addEventListener('resize', () => {
+                resize();
+                createNodes();
+            });
+
+            window.addEventListener('mousemove', (e) => {
+                mouse.x = e.clientX;
+                mouse.y = e.clientY;
+            });
+
+            window.addEventListener('mouseout', () => {
+                mouse.x = null;
+                mouse.y = null;
+            });
+
+            resize();
+            createNodes();
+            animate();
+        })();
+
+        // Copy to clipboard functionality
+        document.addEventListener('DOMContentLoaded', function() {
+            // Add copy buttons to all code blocks
+            document.querySelectorAll('.code-block').forEach(block => {
+                const pre = block.querySelector('pre');
+                if (!pre) return;
+
+                const btn = document.createElement('button');
+                btn.className = 'copy-btn';
+                btn.textContent = 'Copy';
+                btn.addEventListener('click', function() {
+                    const code = pre.querySelector('code') || pre;
+                    const text = code.textContent;
+
+                    navigator.clipboard.writeText(text).then(() => {
+                        btn.textContent = 'Copied!';
+                        btn.style.background = 'var(--primary-purple)';
+                        btn.style.color = 'white';
+                        setTimeout(() => {
+                            btn.textContent = 'Copy';
+                            btn.style.background = '';
+                            btn.style.color = '';
+                        }, 2000);
+                    }).catch(err => {
+                        btn.textContent = 'Failed';
+                        setTimeout(() => {
+                            btn.textContent = 'Copy';
+                        }, 2000);
+                    });
+                });
+                block.appendChild(btn);
+            });
+        });
+    </script>
+</body>
+</html>

@@ -1,0 +1,905 @@
+# HungryHippaahneties - Kubernetes Deployments
+# Based on OWASP Kubernetes Security Cheat Sheet
+# All deployments follow Pod Security Standards: Restricted
+
+# ===========================================
+# NGINX REVERSE PROXY DEPLOYMENT
+# ===========================================
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: nginx-proxy
+  namespace: hungryhippaahneties
+  labels:
+    app: nginx-proxy
+    tier: frontend
+    compliance: hipaa
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: nginx-proxy
+      tier: frontend
+  template:
+    metadata:
+      labels:
+        app: nginx-proxy
+        tier: frontend
+        compliance: hipaa
+      annotations:
+        # Force pod restart on config change
+        checksum/config: "{{ include (print $.Template.BasePath \"/configmap.yaml\") . | sha256sum }}"
+    spec:
+      serviceAccountName: nginx-proxy-sa
+      automountServiceAccountToken: false
+
+      # Security: Pod Security Context
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 10001
+        runAsGroup: 10001
+        fsGroup: 10001
+        seccompProfile:
+          type: RuntimeDefault
+
+      containers:
+        - name: nginx
+          image: hungryhippaahneties/nginx-proxy:1.0.0
+          imagePullPolicy: Always
+
+          ports:
+            - containerPort: 443
+              protocol: TCP
+              name: https
+            - containerPort: 80
+              protocol: TCP
+              name: http
+
+          # Security: Container Security Context
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            runAsNonRoot: true
+            runAsUser: 10001
+            capabilities:
+              drop:
+                - ALL
+
+          # Resource limits - prevent DoS
+          resources:
+            requests:
+              cpu: "100m"
+              memory: "128Mi"
+            limits:
+              cpu: "500m"
+              memory: "256Mi"
+
+          # Volume mounts for read-only filesystem
+          volumeMounts:
+            - name: nginx-config
+              mountPath: /etc/nginx/nginx.conf
+              subPath: nginx.conf
+              readOnly: true
+            - name: tls-certs
+              mountPath: /etc/nginx/ssl
+              readOnly: true
+            - name: cache
+              mountPath: /var/cache/nginx
+            - name: run
+              mountPath: /var/run/nginx
+            - name: logs
+              mountPath: /var/log/nginx
+
+          # Health checks
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: 80
+            initialDelaySeconds: 10
+            periodSeconds: 10
+            timeoutSeconds: 5
+            failureThreshold: 3
+
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: 80
+            initialDelaySeconds: 5
+            periodSeconds: 5
+            timeoutSeconds: 3
+            failureThreshold: 3
+
+      volumes:
+        - name: nginx-config
+          configMap:
+            name: nginx-config
+        - name: tls-certs
+          secret:
+            secretName: tls-certificates
+        - name: cache
+          emptyDir: {}
+        - name: run
+          emptyDir: {}
+        - name: logs
+          emptyDir: {}
+
+      # Pod anti-affinity for HA
+      affinity:
+        podAntiAffinity:
+          preferredDuringSchedulingIgnoredDuringExecution:
+            - weight: 100
+              podAffinityTerm:
+                labelSelector:
+                  matchLabels:
+                    app: nginx-proxy
+                topologyKey: kubernetes.io/hostname
+
+---
+# ===========================================
+# API SERVICE DEPLOYMENT
+# ===========================================
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: api
+  namespace: hungryhippaahneties
+  labels:
+    app: api
+    tier: middleware
+    compliance: hipaa
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: api
+      tier: middleware
+  template:
+    metadata:
+      labels:
+        app: api
+        tier: middleware
+        compliance: hipaa
+    spec:
+      serviceAccountName: api-sa
+      automountServiceAccountToken: false
+
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 10001
+        runAsGroup: 10001
+        fsGroup: 10001
+        seccompProfile:
+          type: RuntimeDefault
+
+      containers:
+        - name: api
+          image: hungryhippaahneties/api:1.0.0
+          imagePullPolicy: Always
+
+          ports:
+            - containerPort: 8000
+              protocol: TCP
+              name: http
+
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            runAsNonRoot: true
+            runAsUser: 10001
+            capabilities:
+              drop:
+                - ALL
+
+          resources:
+            requests:
+              cpu: "200m"
+              memory: "256Mi"
+            limits:
+              cpu: "1000m"
+              memory: "512Mi"
+
+          env:
+            - name: NODE_ENV
+              value: "production"
+            - name: PORT
+              value: "8000"
+            # Database connection from secrets
+            - name: DATABASE_URL
+              valueFrom:
+                secretKeyRef:
+                  name: db-credentials
+                  key: DATABASE_URL
+            # Redis connection from secrets
+            - name: REDIS_URL
+              valueFrom:
+                secretKeyRef:
+                  name: redis-credentials
+                  key: REDIS_URL
+            # JWT secrets
+            - name: JWT_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: api-secrets
+                  key: JWT_SECRET
+            - name: ENCRYPTION_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: api-secrets
+                  key: ENCRYPTION_KEY
+
+          volumeMounts:
+            - name: tmp
+              mountPath: /app/tmp
+            - name: logs
+              mountPath: /app/logs
+
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: 8000
+            initialDelaySeconds: 15
+            periodSeconds: 10
+            timeoutSeconds: 5
+            failureThreshold: 3
+
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: 8000
+            initialDelaySeconds: 10
+            periodSeconds: 5
+            timeoutSeconds: 3
+            failureThreshold: 3
+
+      volumes:
+        - name: tmp
+          emptyDir: {}
+        - name: logs
+          emptyDir: {}
+
+      affinity:
+        podAntiAffinity:
+          preferredDuringSchedulingIgnoredDuringExecution:
+            - weight: 100
+              podAffinityTerm:
+                labelSelector:
+                  matchLabels:
+                    app: api
+                topologyKey: kubernetes.io/hostname
+
+---
+# ===========================================
+# BACKEND SERVICE DEPLOYMENT
+# ===========================================
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: backend
+  namespace: hungryhippaahneties
+  labels:
+    app: backend
+    tier: middleware
+    compliance: hipaa
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: backend
+      tier: middleware
+  template:
+    metadata:
+      labels:
+        app: backend
+        tier: middleware
+        compliance: hipaa
+    spec:
+      serviceAccountName: backend-sa
+      automountServiceAccountToken: false
+
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 10001
+        runAsGroup: 10001
+        fsGroup: 10001
+        seccompProfile:
+          type: RuntimeDefault
+
+      containers:
+        - name: backend
+          image: hungryhippaahneties/backend:1.0.0
+          imagePullPolicy: Always
+
+          ports:
+            - containerPort: 8080
+              protocol: TCP
+              name: http
+
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            runAsNonRoot: true
+            runAsUser: 10001
+            capabilities:
+              drop:
+                - ALL
+
+          resources:
+            requests:
+              cpu: "200m"
+              memory: "256Mi"
+            limits:
+              cpu: "1000m"
+              memory: "512Mi"
+
+          env:
+            - name: ENVIRONMENT
+              value: "production"
+            - name: DATABASE_URL
+              valueFrom:
+                secretKeyRef:
+                  name: db-credentials
+                  key: DATABASE_URL
+            - name: REDIS_URL
+              valueFrom:
+                secretKeyRef:
+                  name: redis-credentials
+                  key: REDIS_URL
+
+          volumeMounts:
+            - name: tmp
+              mountPath: /app/tmp
+            - name: logs
+              mountPath: /app/logs
+            # Shared memory for gunicorn workers
+            - name: dshm
+              mountPath: /dev/shm
+
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: 8080
+            initialDelaySeconds: 15
+            periodSeconds: 10
+            timeoutSeconds: 5
+            failureThreshold: 3
+
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: 8080
+            initialDelaySeconds: 10
+            periodSeconds: 5
+            timeoutSeconds: 3
+            failureThreshold: 3
+
+      volumes:
+        - name: tmp
+          emptyDir: {}
+        - name: logs
+          emptyDir: {}
+        - name: dshm
+          emptyDir:
+            medium: Memory
+            sizeLimit: 64Mi
+
+---
+# ===========================================
+# FRONTEND DEPLOYMENT
+# ===========================================
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: frontend
+  namespace: hungryhippaahneties
+  labels:
+    app: frontend
+    tier: frontend
+    compliance: hipaa
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: frontend
+      tier: frontend
+  template:
+    metadata:
+      labels:
+        app: frontend
+        tier: frontend
+        compliance: hipaa
+    spec:
+      serviceAccountName: frontend-sa
+      automountServiceAccountToken: false
+
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 10001
+        runAsGroup: 10001
+        fsGroup: 10001
+        seccompProfile:
+          type: RuntimeDefault
+
+      containers:
+        - name: frontend
+          image: hungryhippaahneties/frontend:1.0.0
+          imagePullPolicy: Always
+
+          ports:
+            - containerPort: 3000
+              protocol: TCP
+              name: http
+
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            runAsNonRoot: true
+            runAsUser: 10001
+            capabilities:
+              drop:
+                - ALL
+
+          resources:
+            requests:
+              cpu: "50m"
+              memory: "64Mi"
+            limits:
+              cpu: "200m"
+              memory: "128Mi"
+
+          volumeMounts:
+            - name: cache
+              mountPath: /var/cache/nginx
+            - name: run
+              mountPath: /var/run
+            - name: logs
+              mountPath: /var/log/nginx
+
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: 3000
+            initialDelaySeconds: 10
+            periodSeconds: 10
+            timeoutSeconds: 5
+            failureThreshold: 3
+
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: 3000
+            initialDelaySeconds: 5
+            periodSeconds: 5
+            timeoutSeconds: 3
+            failureThreshold: 3
+
+      volumes:
+        - name: cache
+          emptyDir: {}
+        - name: run
+          emptyDir: {}
+        - name: logs
+          emptyDir: {}
+
+---
+# ===========================================
+# POSTGRESQL STATEFULSET
+# ===========================================
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: postgresql
+  namespace: hungryhippaahneties
+  labels:
+    app: postgresql
+    tier: backend
+    compliance: hipaa
+spec:
+  serviceName: postgresql-headless
+  replicas: 1
+  selector:
+    matchLabels:
+      app: postgresql
+      tier: backend
+  template:
+    metadata:
+      labels:
+        app: postgresql
+        tier: backend
+        compliance: hipaa
+    spec:
+      serviceAccountName: postgresql-sa
+      automountServiceAccountToken: false
+
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 999  # PostgreSQL user
+        runAsGroup: 999
+        fsGroup: 999
+        seccompProfile:
+          type: RuntimeDefault
+
+      containers:
+        - name: postgresql
+          image: postgres:16-alpine
+          imagePullPolicy: Always
+
+          ports:
+            - containerPort: 5432
+              protocol: TCP
+              name: postgresql
+
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: false  # PostgreSQL needs write access
+            runAsNonRoot: true
+            runAsUser: 999
+            capabilities:
+              drop:
+                - ALL
+
+          resources:
+            requests:
+              cpu: "250m"
+              memory: "512Mi"
+            limits:
+              cpu: "1000m"
+              memory: "1Gi"
+
+          env:
+            - name: POSTGRES_USER
+              valueFrom:
+                secretKeyRef:
+                  name: db-credentials
+                  key: POSTGRES_USER
+            - name: POSTGRES_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: db-credentials
+                  key: POSTGRES_PASSWORD
+            - name: POSTGRES_DB
+              valueFrom:
+                secretKeyRef:
+                  name: db-credentials
+                  key: POSTGRES_DB
+            - name: PGDATA
+              value: /var/lib/postgresql/data/pgdata
+
+          volumeMounts:
+            - name: data
+              mountPath: /var/lib/postgresql/data
+            - name: config
+              mountPath: /etc/postgresql/postgresql.conf
+              subPath: postgresql.conf
+              readOnly: true
+            - name: hba-config
+              mountPath: /etc/postgresql/pg_hba.conf
+              subPath: pg_hba.conf
+              readOnly: true
+            - name: ssl-certs
+              mountPath: /var/lib/postgresql/ssl
+              readOnly: true
+
+          livenessProbe:
+            exec:
+              command:
+                - pg_isready
+                - -U
+                - $(POSTGRES_USER)
+                - -d
+                - $(POSTGRES_DB)
+            initialDelaySeconds: 30
+            periodSeconds: 10
+            timeoutSeconds: 5
+            failureThreshold: 3
+
+          readinessProbe:
+            exec:
+              command:
+                - pg_isready
+                - -U
+                - $(POSTGRES_USER)
+                - -d
+                - $(POSTGRES_DB)
+            initialDelaySeconds: 10
+            periodSeconds: 5
+            timeoutSeconds: 3
+            failureThreshold: 3
+
+      volumes:
+        - name: config
+          configMap:
+            name: postgresql-config
+        - name: hba-config
+          configMap:
+            name: postgresql-hba-config
+        - name: ssl-certs
+          secret:
+            secretName: tls-certificates
+
+  volumeClaimTemplates:
+    - metadata:
+        name: data
+        labels:
+          app: postgresql
+          compliance: hipaa
+      spec:
+        accessModes: ["ReadWriteOnce"]
+        storageClassName: encrypted-ssd  # Use encrypted storage class
+        resources:
+          requests:
+            storage: 20Gi
+
+---
+# ===========================================
+# REDIS STATEFULSET
+# ===========================================
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: redis
+  namespace: hungryhippaahneties
+  labels:
+    app: redis
+    tier: backend
+    compliance: hipaa
+spec:
+  serviceName: redis-headless
+  replicas: 1
+  selector:
+    matchLabels:
+      app: redis
+      tier: backend
+  template:
+    metadata:
+      labels:
+        app: redis
+        tier: backend
+        compliance: hipaa
+    spec:
+      serviceAccountName: redis-sa
+      automountServiceAccountToken: false
+
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 999
+        runAsGroup: 999
+        fsGroup: 999
+        seccompProfile:
+          type: RuntimeDefault
+
+      containers:
+        - name: redis
+          image: redis:7-alpine
+          imagePullPolicy: Always
+
+          ports:
+            - containerPort: 6380
+              protocol: TCP
+              name: redis-tls
+
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            runAsNonRoot: true
+            runAsUser: 999
+            capabilities:
+              drop:
+                - ALL
+
+          resources:
+            requests:
+              cpu: "100m"
+              memory: "128Mi"
+            limits:
+              cpu: "500m"
+              memory: "256Mi"
+
+          command:
+            - redis-server
+            - /etc/redis/redis.conf
+            - --requirepass
+            - $(REDIS_PASSWORD)
+
+          env:
+            - name: REDIS_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: redis-credentials
+                  key: REDIS_PASSWORD
+
+          volumeMounts:
+            - name: data
+              mountPath: /data
+            - name: config
+              mountPath: /etc/redis/redis.conf
+              subPath: redis.conf
+              readOnly: true
+            - name: acl
+              mountPath: /etc/redis/users.acl
+              subPath: users.acl
+              readOnly: true
+            - name: ssl-certs
+              mountPath: /etc/redis/ssl
+              readOnly: true
+            - name: logs
+              mountPath: /var/log/redis
+
+          livenessProbe:
+            exec:
+              command:
+                - redis-cli
+                - --tls
+                - --cert
+                - /etc/redis/ssl/redis.crt
+                - --key
+                - /etc/redis/ssl/redis.key
+                - --cacert
+                - /etc/redis/ssl/ca.crt
+                - -p
+                - "6380"
+                - ping
+            initialDelaySeconds: 30
+            periodSeconds: 10
+            timeoutSeconds: 5
+            failureThreshold: 3
+
+          readinessProbe:
+            exec:
+              command:
+                - redis-cli
+                - --tls
+                - --cert
+                - /etc/redis/ssl/redis.crt
+                - --key
+                - /etc/redis/ssl/redis.key
+                - --cacert
+                - /etc/redis/ssl/ca.crt
+                - -p
+                - "6380"
+                - ping
+            initialDelaySeconds: 10
+            periodSeconds: 5
+            timeoutSeconds: 3
+            failureThreshold: 3
+
+      volumes:
+        - name: config
+          configMap:
+            name: redis-config
+        - name: acl
+          configMap:
+            name: redis-acl
+        - name: ssl-certs
+          secret:
+            secretName: tls-certificates
+        - name: logs
+          emptyDir: {}
+
+  volumeClaimTemplates:
+    - metadata:
+        name: data
+        labels:
+          app: redis
+          compliance: hipaa
+      spec:
+        accessModes: ["ReadWriteOnce"]
+        storageClassName: encrypted-ssd
+        resources:
+          requests:
+            storage: 5Gi
+
+---
+# ===========================================
+# WAF DEPLOYMENT
+# ===========================================
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: modsecurity-waf
+  namespace: hungryhippaahneties
+  labels:
+    app: modsecurity-waf
+    tier: frontend
+    compliance: hipaa
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: modsecurity-waf
+      tier: frontend
+  template:
+    metadata:
+      labels:
+        app: modsecurity-waf
+        tier: frontend
+        compliance: hipaa
+    spec:
+      serviceAccountName: waf-sa
+      automountServiceAccountToken: false
+
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 10001
+        runAsGroup: 10001
+        fsGroup: 10001
+        seccompProfile:
+          type: RuntimeDefault
+
+      containers:
+        - name: modsecurity
+          image: hungryhippaahneties/waf:1.0.0
+          imagePullPolicy: Always
+
+          ports:
+            - containerPort: 8443
+              protocol: TCP
+              name: https
+            - containerPort: 8080
+              protocol: TCP
+              name: http
+
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: false  # ModSecurity needs write for temp files
+            runAsNonRoot: true
+            runAsUser: 10001
+            capabilities:
+              drop:
+                - ALL
+
+          resources:
+            requests:
+              cpu: "200m"
+              memory: "256Mi"
+            limits:
+              cpu: "1000m"
+              memory: "512Mi"
+
+          env:
+            - name: PARANOIA
+              value: "2"
+            - name: ANOMALY_INBOUND
+              value: "5"
+            - name: ANOMALY_OUTBOUND
+              value: "4"
+            - name: BACKEND
+              value: "https://nginx-proxy-service:443"
+
+          volumeMounts:
+            - name: config
+              mountPath: /etc/modsecurity.d/modsecurity.conf
+              subPath: modsecurity.conf
+              readOnly: true
+            - name: logs
+              mountPath: /var/log/modsecurity
+            - name: ssl-certs
+              mountPath: /etc/nginx/ssl
+              readOnly: true
+
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: 8080
+            initialDelaySeconds: 15
+            periodSeconds: 10
+            timeoutSeconds: 5
+            failureThreshold: 3
+
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: 8080
+            initialDelaySeconds: 10
+            periodSeconds: 5
+            timeoutSeconds: 3
+            failureThreshold: 3
+
+      volumes:
+        - name: config
+          configMap:
+            name: modsecurity-config
+        - name: logs
+          emptyDir: {}
+        - name: ssl-certs
+          secret:
+            secretName: tls-certificates

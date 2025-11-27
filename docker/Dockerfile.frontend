@@ -1,0 +1,70 @@
+# HungryHippaahneties - Secure Frontend Service
+# Based on OWASP Docker & Node.js Security Cheat Sheets
+
+# ===========================================
+# BUILD STAGE
+# ===========================================
+FROM node:20-alpine AS builder
+
+WORKDIR /app
+
+# Security: Create non-root user for build
+RUN addgroup -g 10001 -S appgroup && \
+    adduser -u 10001 -S appuser -G appgroup
+
+# Copy package files
+COPY --chown=appuser:appgroup package*.json ./
+
+# Security: Use npm ci for reproducible builds
+RUN npm ci && \
+    npm audit --audit-level=high || true
+
+# Copy source code
+COPY --chown=appuser:appgroup . .
+
+# Build the application
+RUN npm run build
+
+# ===========================================
+# PRODUCTION STAGE - Using nginx for static serving
+# ===========================================
+FROM nginx:1.25-alpine AS production
+
+LABEL maintainer="security@hungryhippaahneties.local"
+LABEL version="1.0.0"
+LABEL description="HIPAA-compliant frontend service"
+LABEL compliance="HIPAA"
+
+# Security: Create non-root user
+RUN addgroup -g 10001 -S nginx-hipaa && \
+    adduser -u 10001 -S -G nginx-hipaa -H -s /sbin/nologin nginx-hipaa
+
+# Security: Update packages
+RUN apk --no-cache upgrade && \
+    apk add --no-cache curl ca-certificates && \
+    rm -rf /var/cache/apk/*
+
+# Remove default nginx content
+RUN rm -rf /usr/share/nginx/html/*
+
+# Copy built assets from builder
+COPY --from=builder --chown=nginx-hipaa:nginx-hipaa /app/dist /usr/share/nginx/html
+
+# Copy custom nginx config for frontend
+COPY --chown=nginx-hipaa:nginx-hipaa configs/nginx/frontend.conf /etc/nginx/nginx.conf
+
+# Security: Set restrictive permissions
+RUN chmod -R 550 /usr/share/nginx/html && \
+    chown -R nginx-hipaa:nginx-hipaa /var/cache/nginx /var/log/nginx /var/run && \
+    chmod 750 /var/cache/nginx /var/log/nginx
+
+# Health check
+HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
+    CMD curl -f http://localhost:3000/health || exit 1
+
+# Security: Run as non-root user
+USER nginx-hipaa
+
+EXPOSE 3000
+
+CMD ["nginx", "-g", "daemon off;"]

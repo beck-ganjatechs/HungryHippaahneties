@@ -1,0 +1,114 @@
+# HungryHippaahneties - ConfigMaps
+# Non-sensitive configuration data
+
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: nginx-config
+  namespace: hungryhippaahneties
+  labels:
+    app: nginx-proxy
+    compliance: hipaa
+data:
+  nginx.conf: |
+    # See configs/nginx/nginx.conf for full configuration
+    # This is loaded from the config file during deployment
+
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: postgresql-config
+  namespace: hungryhippaahneties
+  labels:
+    app: postgresql
+    compliance: hipaa
+data:
+  postgresql.conf: |
+    # See configs/postgres/postgresql.conf for full configuration
+
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: postgresql-hba-config
+  namespace: hungryhippaahneties
+  labels:
+    app: postgresql
+    compliance: hipaa
+data:
+  pg_hba.conf: |
+    # See configs/postgres/pg_hba.conf for full configuration
+
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: redis-config
+  namespace: hungryhippaahneties
+  labels:
+    app: redis
+    compliance: hipaa
+data:
+  redis.conf: |
+    # See configs/redis/redis.conf for full configuration
+
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: redis-acl
+  namespace: hungryhippaahneties
+  labels:
+    app: redis
+    compliance: hipaa
+data:
+  users.acl: |
+    # See configs/redis/users.acl for full configuration
+
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: modsecurity-config
+  namespace: hungryhippaahneties
+  labels:
+    app: modsecurity-waf
+    compliance: hipaa
+data:
+  modsecurity.conf: |
+    # See configs/modsecurity/modsecurity.conf for full configuration
+
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: app-config
+  namespace: hungryhippaahneties
+  labels:
+    compliance: hipaa
+data:
+  # Application-wide configuration
+  LOG_LEVEL: "info"
+  LOG_FORMAT: "json"
+  ENVIRONMENT: "production"
+  TZ: "UTC"
+
+  # Security settings
+  SESSION_TIMEOUT: "900"
+  MAX_LOGIN_ATTEMPTS: "5"
+  LOCKOUT_DURATION: "300"
+  PASSWORD_MIN_LENGTH: "15"
+  MFA_REQUIRED: "true"
+
+  # CORS settings
+  ALLOWED_ORIGINS: "https://hungryhippaahneties.example.com"
+
+  # Rate limiting
+  RATE_LIMIT_WINDOW: "60000"
+  RATE_LIMIT_MAX_REQUESTS: "100"
+
+  # HIPAA compliance
+  AUDIT_LOGGING: "true"
+  PHI_ENCRYPTION: "true"
+  DATA_RETENTION_DAYS: "2555"  # 7 years for HIPAA

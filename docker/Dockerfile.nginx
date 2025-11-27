@@ -1,0 +1,54 @@
+# HungryHippaahneties - Hardened NGINX Reverse Proxy
+# Based on OWASP Docker Security Cheat Sheet
+
+# Use specific version, not latest
+FROM nginx:1.25-alpine AS base
+
+# Security: Add labels for tracking
+LABEL maintainer="security@hungryhippaahneties.local"
+LABEL version="1.0.0"
+LABEL description="HIPAA-compliant hardened NGINX reverse proxy"
+LABEL compliance="HIPAA"
+
+# Security: Run as non-root user
+# Create nginx user with specific UID (non-privileged)
+RUN addgroup -g 10001 -S nginx-hipaa && \
+    adduser -u 10001 -S -G nginx-hipaa -H -s /sbin/nologin nginx-hipaa
+
+# Security: Remove unnecessary packages and files
+RUN apk --no-cache upgrade && \
+    apk add --no-cache \
+        curl \
+        ca-certificates && \
+    # Remove default nginx configs
+    rm -rf /etc/nginx/conf.d/* && \
+    rm -f /etc/nginx/nginx.conf && \
+    # Remove unnecessary files
+    rm -rf /var/cache/apk/* && \
+    rm -rf /tmp/*
+
+# Create required directories with proper permissions
+RUN mkdir -p /var/log/nginx /var/cache/nginx /var/run/nginx /etc/nginx/ssl && \
+    chown -R nginx-hipaa:nginx-hipaa /var/log/nginx /var/cache/nginx /var/run/nginx /etc/nginx && \
+    chmod 750 /var/log/nginx /var/cache/nginx /var/run/nginx /etc/nginx/ssl
+
+# Copy hardened nginx configuration
+COPY --chown=nginx-hipaa:nginx-hipaa configs/nginx/nginx.conf /etc/nginx/nginx.conf
+
+# Security: Set proper file permissions
+RUN chmod 640 /etc/nginx/nginx.conf
+
+# Health check
+HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
+    CMD curl -f http://localhost/health || exit 1
+
+# Security: Run as non-root user
+USER nginx-hipaa
+
+# Expose only necessary ports
+EXPOSE 80 443
+
+# Security: Read-only filesystem compatibility
+VOLUME ["/var/cache/nginx", "/var/run/nginx", "/var/log/nginx"]
+
+CMD ["nginx", "-g", "daemon off;"]

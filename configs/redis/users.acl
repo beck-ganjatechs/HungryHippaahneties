@@ -1,0 +1,21 @@
+# HungryHippaahneties - Redis ACL Configuration
+# OWASP: Principle of Least Privilege
+
+# Default user - disabled for security
+user default off
+
+# Application user - limited permissions for cache operations
+# Password will be injected via K8s secret
+user app_cache on >PLACEHOLDER_PASSWORD ~cache:* ~session:* +get +set +del +exists +expire +ttl +scan +keys +mget +mset -@all +@read +@write -@admin -@dangerous
+
+# API service user - read/write access to API cache
+user api_service on >PLACEHOLDER_PASSWORD ~api:* ~rate:* +get +set +del +exists +expire +ttl +incr +decr +scan -@all +@read +@write -@admin -@dangerous
+
+# Session store user - session management only
+user session_store on >PLACEHOLDER_PASSWORD ~session:* +get +set +del +expire +ttl -@all +@read +@write -@admin -@dangerous
+
+# Admin user - for maintenance only (use sparingly)
+user redis_admin on >PLACEHOLDER_ADMIN_PASSWORD ~* +@all
+
+# Health check user - minimal permissions
+user healthcheck on >PLACEHOLDER_HEALTH_PASSWORD +ping +info -@all
